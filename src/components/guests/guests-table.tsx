@@ -1,6 +1,6 @@
 
 "use client";
-
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type Guest = {
@@ -81,9 +81,14 @@ export default function GuestsTable({ guests }: { guests: Guest[] }) {
             <tbody className="divide-y divide-gray-100">
               {filteredGuests.map((guest) => (
                 <tr key={guest.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-4 font-medium text-gray-900">
-                    {guest.firstName} {guest.lastName}
-                  </td>
+                  <td className="px-5 py-4">
+  <Link
+    href={`/guests/${guest.id}`}
+    className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+  >
+    {guest.firstName} {guest.lastName}
+  </Link>
+</td>
                   <td className="px-5 py-4 text-gray-600">
                     {guest.phone || "—"}
                   </td>

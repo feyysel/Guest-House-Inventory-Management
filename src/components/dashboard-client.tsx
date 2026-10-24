@@ -173,17 +173,33 @@ export default function DashboardClient({ roomStats }: DashboardClientProps) {
               key={label}
               className={`nav-item ${activePage === label ? "active" : ""}`}
               
-onClick={() => {
-  if (label === "Rooms") {
-    router.push("/rooms");
-  } else if (label === "Reservations") {
-    router.push("/reservations");
-  } else {
-    setActivePage(label);
-  }
 
+onClick={() => {
   setSidebarOpen(false);
+
+  switch (label) {
+    case "Rooms":
+      router.push("/rooms");
+      break;
+
+    case "Reservations":
+      router.push("/reservations");
+      break;
+
+    case "Guests":
+      router.push("/guests");
+      break;
+
+    case "Dashboard":
+      router.push("/");
+      break;
+
+    default:
+      setActivePage(label);
+      break;
+  }
 }}
+
 
             >
               <Icon size={19} />
