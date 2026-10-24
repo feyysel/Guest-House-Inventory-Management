@@ -194,6 +194,10 @@ onClick={() => {
       router.push("/");
       break;
 
+      case "Payments":
+  router.push("/payments");
+  break;
+
     default:
       setActivePage(label);
       break;
