@@ -134,3 +134,17 @@ model Payment {
   @@index([reservationId])
   @@index([status])
 }
+
+
+model GuestHouseSettings {
+  id             String   @id @default(cuid())
+  guesthouseName String   @default("HavenStay Guest House")
+  email          String?
+  phone          String?
+  address        String?
+  checkInTime    String   @default("12:00")
+  checkOutTime   String   @default("11:00")
+  currency       String   @default("ETB")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

@@ -42,3 +42,8 @@ export type Reservation = Prisma.ReservationModel
  * 
  */
 export type Payment = Prisma.PaymentModel
+/**
+ * Model GuestHouseSettings
+ * 
+ */
+export type GuestHouseSettings = Prisma.GuestHouseSettingsModel

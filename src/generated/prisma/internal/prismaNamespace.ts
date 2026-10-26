@@ -401,7 +401,8 @@ export const ModelName = {
   Room: 'Room',
   Guest: 'Guest',
   Reservation: 'Reservation',
-  Payment: 'Payment'
+  Payment: 'Payment',
+  GuestHouseSettings: 'GuestHouseSettings'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -417,7 +418,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "room" | "guest" | "reservation" | "payment"
+    modelProps: "user" | "room" | "guest" | "reservation" | "payment" | "guestHouseSettings"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -791,6 +792,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    GuestHouseSettings: {
+      payload: Prisma.$GuestHouseSettingsPayload<ExtArgs>
+      fields: Prisma.GuestHouseSettingsFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.GuestHouseSettingsFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.GuestHouseSettingsFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>
+        }
+        findFirst: {
+          args: Prisma.GuestHouseSettingsFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.GuestHouseSettingsFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>
+        }
+        findMany: {
+          args: Prisma.GuestHouseSettingsFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>[]
+        }
+        create: {
+          args: Prisma.GuestHouseSettingsCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>
+        }
+        createMany: {
+          args: Prisma.GuestHouseSettingsCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.GuestHouseSettingsCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>[]
+        }
+        delete: {
+          args: Prisma.GuestHouseSettingsDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>
+        }
+        update: {
+          args: Prisma.GuestHouseSettingsUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>
+        }
+        deleteMany: {
+          args: Prisma.GuestHouseSettingsDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.GuestHouseSettingsUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.GuestHouseSettingsUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>[]
+        }
+        upsert: {
+          args: Prisma.GuestHouseSettingsUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GuestHouseSettingsPayload>
+        }
+        aggregate: {
+          args: Prisma.GuestHouseSettingsAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGuestHouseSettings>
+        }
+        groupBy: {
+          args: Prisma.GuestHouseSettingsGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GuestHouseSettingsGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.GuestHouseSettingsCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GuestHouseSettingsCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -908,6 +983,22 @@ export const PaymentScalarFieldEnum = {
 } as const
 
 export type PaymentScalarFieldEnum = (typeof PaymentScalarFieldEnum)[keyof typeof PaymentScalarFieldEnum]
+
+
+export const GuestHouseSettingsScalarFieldEnum = {
+  id: 'id',
+  guesthouseName: 'guesthouseName',
+  email: 'email',
+  phone: 'phone',
+  address: 'address',
+  checkInTime: 'checkInTime',
+  checkOutTime: 'checkOutTime',
+  currency: 'currency',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GuestHouseSettingsScalarFieldEnum = (typeof GuestHouseSettingsScalarFieldEnum)[keyof typeof GuestHouseSettingsScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1256,6 +1347,7 @@ export type GlobalOmitConfig = {
   guest?: Prisma.GuestOmit
   reservation?: Prisma.ReservationOmit
   payment?: Prisma.PaymentOmit
+  guestHouseSettings?: Prisma.GuestHouseSettingsOmit
 }
 
 /* Types for Logging */
