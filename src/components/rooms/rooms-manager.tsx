@@ -48,8 +48,10 @@ function labelStatus(status: string) {
 
 export default function RoomsManager({
   initialRooms,
+  canDelete,
 }: {
   initialRooms: Room[];
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const [rooms, setRooms] = useState(initialRooms);
@@ -375,14 +377,16 @@ export default function RoomsManager({
                         >
                           Edit
                         </button>
-                        <button
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => removeRoom(room)}
-                          className="font-medium text-red-600 hover:underline disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => removeRoom(room)}
+                            className="font-medium text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,8 +1,12 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 export async function GET() {
+  const denied = await requireApiPermission("settings:update");
+  if (denied) return denied;
+
   try {
     await prisma.$queryRaw`SELECT 1`;
 

@@ -8,10 +8,10 @@
  *
  * 🟢 You can import this file directly.
  */
-export type * from './models/User'
-export type * from './models/Room'
-export type * from './models/Guest'
-export type * from './models/Reservation'
-export type * from './models/Payment'
-export type * from './models/GuestHouseSettings'
-export type * from './commonInputTypes'
+export type * from './models/User.ts'
+export type * from './models/Room.ts'
+export type * from './models/Guest.ts'
+export type * from './models/Reservation.ts'
+export type * from './models/Payment.ts'
+export type * from './models/GuestHouseSettings.ts'
+export type * from './commonInputTypes.ts'

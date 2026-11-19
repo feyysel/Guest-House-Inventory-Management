@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -10,6 +11,9 @@ export async function PATCH(
   request: Request,
   { params }: RouteContext
 ) {
+  const denied = await requireApiPermission("guests:update");
+  if (denied) return denied;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -68,6 +72,9 @@ export async function DELETE(
   request: Request,
   { params }: RouteContext
 ) {
+  const denied = await requireApiPermission("guests:delete");
+  if (denied) return denied;
+
   try {
     const { id } = await params;
 

@@ -1,8 +1,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  const denied = await requireApiPermission("reports:view");
+  if (denied) return denied;
+
   try {
     const dateParam = request.nextUrl.searchParams.get("date");
 

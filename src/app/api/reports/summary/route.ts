@@ -1,8 +1,12 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
+  const denied = await requireApiPermission("reports:view");
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(request.url);
 

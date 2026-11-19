@@ -16,7 +16,16 @@ type Reservation = {
     name: string;
   };
   totalAmount: number;
+  amountPaid: number;
+  balance: number;
 };
+
+function formatETB(amount: number) {
+  return `ETB ${amount.toLocaleString("en-ET", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
 export default function NewPaymentPage() {
   const router = useRouter();
@@ -31,7 +40,11 @@ export default function NewPaymentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  
+  const selectedReservation = reservations.find(
+    (reservation) => reservation.id === reservationId
+  );
+
+
 useEffect(() => {
   async function loadReservations() {
     try {
@@ -169,6 +182,15 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
           {reservations.length === 0 && (
             <p className="mt-1 text-xs text-gray-500">
               No reservations found. Create a reservation first.
+            </p>
+          )}
+          {selectedReservation && (
+            <p className="mt-2 text-xs text-gray-600">
+              Total {formatETB(selectedReservation.totalAmount)} · Paid{" "}
+              {formatETB(selectedReservation.amountPaid)} · Balance{" "}
+              <span className="font-semibold">
+                {formatETB(selectedReservation.balance)}
+              </span>
             </p>
           )}
         </div>

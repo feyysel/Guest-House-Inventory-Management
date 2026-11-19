@@ -1,10 +1,13 @@
 
 import { prisma } from "@/lib/db";
 import RoomsManager from "@/components/rooms/rooms-manager";
+import { can } from "@/lib/permissions";
+import { requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function RoomsPage() {
+  const user = await requirePermission("rooms:view");
   const databaseRooms = await prisma.room.findMany({
     orderBy: { roomNumber: "asc" },
   });
@@ -20,5 +23,10 @@ export default async function RoomsPage() {
     description: room.description ?? "",
   }));
 
-  return <RoomsManager initialRooms={rooms} />;
+  return (
+    <RoomsManager
+      initialRooms={rooms}
+      canDelete={can(user.role, "rooms:delete")}
+    />
+  );
 }

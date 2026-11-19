@@ -1,10 +1,14 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const denied = await requireApiPermission("settings:view");
+  if (denied) return denied;
+
   try {
     const settings = await prisma.guestHouseSettings.findFirst();
 
@@ -30,6 +34,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const denied = await requireApiPermission("settings:update");
+  if (denied) return denied;
+
   try {
     const body = await request.json();
 

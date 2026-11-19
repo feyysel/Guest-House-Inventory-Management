@@ -12,20 +12,31 @@ import {
   LayoutDashboard,
   BedDouble,
   Menu,
-  MoreHorizontal,
+  LogOut,
   Settings,
+  ShieldCheck,
   Users,
   X,
 } from "lucide-react";
+import { signOut } from "@/app/login/actions";
+import {
+  can,
+  navigation,
+  roleLabels,
+  settingsNavItem,
+} from "@/lib/permissions";
+import type { SessionUser } from "@/lib/session";
 
-const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "Rooms", icon: BedDouble, href: "/rooms" },
-  { label: "Reservations", icon: CalendarCheck, href: "/reservations" },
-  { label: "Guests", icon: Users, href: "/guests" },
-  { label: "Payments", icon: CircleDollarSign, href: "/payments" },
-  { label: "Reports", icon: ClipboardList, href: "/reports" },
-];
+const iconByHref: Record<string, typeof LayoutDashboard> = {
+  "/": LayoutDashboard,
+  "/rooms": BedDouble,
+  "/reservations": CalendarCheck,
+  "/guests": Users,
+  "/payments": CircleDollarSign,
+  "/reports": ClipboardList,
+  "/users": ShieldCheck,
+  "/settings": Settings,
+};
 
 type ShellData = {
   settings?: {
@@ -36,7 +47,13 @@ type ShellData = {
   };
 };
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: SessionUser | null;
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -71,19 +88,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }
     }
 
-    loadShellData();
+    if (user) {
+      loadShellData();
+    }
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
+
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  const visibleNavigation = navigation.filter((item) =>
+    can(user.role, item.permission)
+  );
+  const canViewSettings = can(user.role, settingsNavItem.permission);
+  const initials = user.name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   const activePage =
-    navigation.find((item) =>
-      item.href === "/"
-        ? pathname === "/"
-        : pathname === item.href || pathname.startsWith(`${item.href}/`),
-    )?.label ?? (pathname.startsWith("/settings") ? "Settings" : "Dashboard");
+    [...visibleNavigation, ...(canViewSettings ? [settingsNavItem] : [])].find(
+      (item) =>
+        item.href === "/"
+          ? pathname === "/"
+          : pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )?.label ?? "Dashboard";
 
   function navigate(href: string) {
     setSidebarOpen(false);
@@ -121,30 +156,38 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="nav-caption">WORKSPACE</div>
 
         <nav className="main-nav">
-          {navigation.map(({ label, icon: Icon, href }) => (
-            <button
-              key={label}
-              className={`nav-item ${activePage === label ? "active" : ""}`}
-              onClick={() => navigate(href)}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {label === "Reservations" && pendingReservations > 0 && (
-                <span className="nav-count">{pendingReservations}</span>
-              )}
-            </button>
-          ))}
+          {visibleNavigation.map(({ label, href }) => {
+            const Icon = iconByHref[href];
+
+            return (
+              <button
+                key={label}
+                className={`nav-item ${activePage === label ? "active" : ""}`}
+                onClick={() => navigate(href)}
+              >
+                <Icon size={19} />
+                <span>{label}</span>
+                {label === "Reservations" && pendingReservations > 0 && (
+                  <span className="nav-count">{pendingReservations}</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="nav-caption management-caption">PREFERENCES</div>
+        {canViewSettings && (
+          <>
+            <div className="nav-caption management-caption">PREFERENCES</div>
 
-        <button
-          className={`nav-item ${activePage === "Settings" ? "active" : ""}`}
-          onClick={() => navigate("/settings")}
-        >
-          <Settings size={19} />
-          <span>Settings</span>
-        </button>
+            <button
+              className={`nav-item ${activePage === "Settings" ? "active" : ""}`}
+              onClick={() => navigate(settingsNavItem.href)}
+            >
+              <Settings size={19} />
+              <span>Settings</span>
+            </button>
+          </>
+        )}
 
         <div className="sidebar-bottom">
           <div className="help-card">
@@ -156,12 +199,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="user-profile">
-            <div className="avatar admin-avatar">AD</div>
+            <div className="avatar admin-avatar">{initials}</div>
             <div className="user-details">
-              <strong>Administrator</strong>
-              <span>Property manager</span>
+              <strong>{user.name}</strong>
+              <span>{roleLabels[user.role]}</span>
             </div>
-            <MoreHorizontal size={20} className="muted-icon" />
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="icon-button"
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                <LogOut size={18} />
+              </button>
+            </form>
           </div>
         </div>
       </aside>
@@ -183,15 +235,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="topbar-actions">
-            <button
-              className="property-selector"
-              onClick={() => navigate("/settings")}
-              title="Manage guesthouse settings"
-            >
-              <Building2 size={17} />
-              <span>{guesthouseName}</span>
-              <ChevronDown size={15} />
-            </button>
+            {canViewSettings ? (
+              <button
+                className="property-selector"
+                onClick={() => navigate(settingsNavItem.href)}
+                title="Manage guesthouse settings"
+              >
+                <Building2 size={17} />
+                <span>{guesthouseName}</span>
+                <ChevronDown size={15} />
+              </button>
+            ) : (
+              <div className="property-selector">
+                <Building2 size={17} />
+                <span>{guesthouseName}</span>
+              </div>
+            )}
             <button
               className="icon-button notification-button"
               aria-label="View pending reservations"
@@ -203,7 +262,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="notification-dot" />
               )}
             </button>
-            <div className="avatar top-avatar">AD</div>
+            <div className="avatar top-avatar" title={roleLabels[user.role]}>
+              {initials}
+            </div>
           </div>
         </header>
 

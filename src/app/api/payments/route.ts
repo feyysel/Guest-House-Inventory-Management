@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 const paymentMethods = [
   "CASH",
@@ -18,6 +19,9 @@ const paymentStatuses = [
 ] as const;
 
 export async function POST(request: Request) {
+  const denied = await requireApiPermission("payments:create");
+  if (denied) return denied;
+
   try {
     const body = await request.json();
 

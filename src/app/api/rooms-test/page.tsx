@@ -1,9 +1,12 @@
 
 import { getRooms, getRoomStats } from "@/lib/rooms";
+import { requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function RoomsTestPage() {
+  await requirePermission("rooms:view");
+
   const [rooms, stats] = await Promise.all([
     getRooms(),
     getRoomStats(),

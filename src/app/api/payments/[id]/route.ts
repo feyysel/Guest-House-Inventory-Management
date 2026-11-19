@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 const paymentStatuses = [
   "PENDING",
@@ -14,6 +15,9 @@ type Props = {
 };
 
 export async function PATCH(request: Request, { params }: Props) {
+  const denied = await requireApiPermission("payments:update");
+  if (denied) return denied;
+
   try {
     const { id } = await params;
     const body = await request.json();

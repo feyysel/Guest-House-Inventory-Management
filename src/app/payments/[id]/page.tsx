@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import PaymentStatusEditor from "./PaymentStatusEditor";
+import { can } from "@/lib/permissions";
+import { requirePermission } from "@/lib/session";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -11,6 +13,8 @@ type Props = {
 export const dynamic = "force-dynamic";
 
 export default async function PaymentDetailsPage({ params }: Props) {
+  const user = await requirePermission("payments:view");
+  const canUpdatePayment = can(user.role, "payments:update");
   const { id } = await params;
 
   const payment = await prisma.payment.findUnique({
@@ -69,20 +73,22 @@ export default async function PaymentDetailsPage({ params }: Props) {
         </div>
       </div>
 
-            <section className="space-y-4 rounded-xl border bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Manage Payment Status
-        </h2>
+        {canUpdatePayment && (
+          <section className="space-y-4 rounded-xl border bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Manage Payment Status
+            </h2>
 
-        <p className="text-sm text-gray-500">
-          Update the payment status when its payment state has been verified.
-        </p>
+            <p className="text-sm text-gray-500">
+              Update the payment status when its payment state has been verified.
+            </p>
 
-        <PaymentStatusEditor
-          paymentId={payment.id}
-          currentStatus={payment.status}
-        />
-      </section>
+            <PaymentStatusEditor
+              paymentId={payment.id}
+              currentStatus={payment.status}
+            />
+          </section>
+        )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border bg-white p-5">

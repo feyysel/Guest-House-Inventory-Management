@@ -4,6 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma, RoomStatus, RoomType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { authorize } from "@/lib/session";
 
 export type RoomInput = {
   roomNumber: string;
@@ -48,6 +49,9 @@ function validateRoom(input: RoomInput) {
 }
 
 export async function createRoom(input: RoomInput) {
+  const auth = await authorize("rooms:create");
+  if (auth.error) return { success: false, error: auth.error };
+
   const error = validateRoom(input);
   if (error) return { success: false, error };
 
@@ -89,6 +93,9 @@ export async function createRoom(input: RoomInput) {
 }
 
 export async function updateRoom(id: string, input: RoomInput) {
+  const auth = await authorize("rooms:update");
+  if (auth.error) return { success: false, error: auth.error };
+
   if (!id) return { success: false, error: "Room ID is required." };
 
   const error = validateRoom(input);
@@ -133,6 +140,9 @@ export async function updateRoom(id: string, input: RoomInput) {
 }
 
 export async function deleteRoom(id: string) {
+  const auth = await authorize("rooms:delete");
+  if (auth.error) return { success: false, error: auth.error };
+
   if (!id) return { success: false, error: "Room ID is required." };
 
   try {

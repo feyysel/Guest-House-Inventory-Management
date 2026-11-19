@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,9 @@ function getAddisAbabaDayRange() {
 }
 
 export async function GET() {
+  const denied = await requireApiPermission("dashboard:view");
+  if (denied) return denied;
+
   try {
     const { start, end } = getAddisAbabaDayRange();
 

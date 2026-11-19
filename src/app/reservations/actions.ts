@@ -3,10 +3,13 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  PaymentMethod,
+  PaymentStatus,
   Prisma,
   ReservationStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { authorize } from "@/lib/session";
 
 export type ReservationInput = {
   firstName: string;
@@ -19,6 +22,9 @@ export type ReservationInput = {
   adults: number;
   children: number;
   notes?: string;
+  paymentAmount: number;
+  paymentMethod: string;
+  paymentTransactionRef?: string;
 };
 
 export type ReservationActionResult = {
@@ -47,6 +53,9 @@ function parseDate(value: string): Date | null {
 export async function createReservation(
   input: ReservationInput
 ): Promise<ReservationActionResult> {
+  const auth = await authorize("reservations:create");
+  if (auth.error) return { success: false, message: auth.error };
+
   try {
     const firstName = input.firstName.trim();
     const lastName = input.lastName.trim();
@@ -100,6 +109,38 @@ export async function createReservation(
       return {
         success: false,
         message: "Enter valid numbers of adults and children.",
+      };
+    }
+
+    const paymentAmount = Number(input.paymentAmount);
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      return {
+        success: false,
+        message: "Enter the deposit amount paid at reservation.",
+      };
+    }
+
+    const paymentMethod = String(input.paymentMethod ?? "").trim();
+
+    if (
+      !Object.values(PaymentMethod).includes(
+        paymentMethod as PaymentMethod
+      )
+    ) {
+      return {
+        success: false,
+        message: "Please select a valid payment method.",
+      };
+    }
+
+    const paymentTransactionRef =
+      input.paymentTransactionRef?.trim() || null;
+
+    if (paymentTransactionRef && paymentTransactionRef.length > 191) {
+      return {
+        success: false,
+        message: "Transaction reference must be 191 characters or fewer.",
       };
     }
 
@@ -174,6 +215,13 @@ export async function createReservation(
       });
 
       const totalAmount = room.pricePerNight.mul(nights);
+      const minimumDeposit = totalAmount.div(2);
+
+      if (new Prisma.Decimal(paymentAmount).lt(minimumDeposit)) {
+        throw new Error(
+          `DEPOSIT_BELOW_MINIMUM:${minimumDeposit.toFixed(2)}`
+        );
+      }
 
       return tx.reservation.create({
         data: {
@@ -186,6 +234,16 @@ export async function createReservation(
           status: ReservationStatus.PENDING,
           totalAmount,
           ...(notes ? { notes } : {}),
+          payments: {
+            create: {
+              amount: paymentAmount,
+              method: paymentMethod as PaymentMethod,
+              status: PaymentStatus.COMPLETED,
+              ...(paymentTransactionRef
+                ? { transactionRef: paymentTransactionRef }
+                : {}),
+            },
+          },
         },
         select: {
           bookingCode: true,
@@ -200,7 +258,7 @@ export async function createReservation(
 
     return {
       success: true,
-      message: `Reservation created successfully. Total: ETB ${reservation.totalAmount.toFixed(2)}.`,
+      message: `Reservation created successfully. Total: ETB ${reservation.totalAmount.toFixed(2)}. Deposit paid: ETB ${paymentAmount.toFixed(2)}.`,
       bookingCode: reservation.bookingCode,
     };
   } catch (error) {
@@ -229,16 +287,30 @@ export async function createReservation(
             message: "This room already has a reservation during those dates.",
           };
       }
+
+      if (error.message.startsWith("DEPOSIT_BELOW_MINIMUM:")) {
+        const minimum = error.message.split(":")[1];
+        return {
+          success: false,
+          message: `A deposit of at least ETB ${minimum} (50% of the room total) is required to reserve.`,
+        };
+      }
     }
 
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2003"
-    ) {
-      return {
-        success: false,
-        message: "The selected room or guest is no longer available.",
-      };
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2003") {
+        return {
+          success: false,
+          message: "The selected room or guest is no longer available.",
+        };
+      }
+
+      if (error.code === "P2002") {
+        return {
+          success: false,
+          message: "That transaction reference is already in use.",
+        };
+      }
     }
 
     return {
@@ -253,6 +325,9 @@ export async function updateReservationStatus(
   reservationId: string,
   nextStatus: ReservationStatus
 ): Promise<ReservationActionResult> {
+  const auth = await authorize("reservations:update");
+  if (auth.error) return { success: false, message: auth.error };
+
   const allowedTransitions: Record<string, string[]> = {
     PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
     CONFIRMED: ["CHECKED_IN", "CANCELLED", "NO_SHOW"],
@@ -282,6 +357,7 @@ export async function updateReservationStatus(
           id: true,
           roomId: true,
           status: true,
+          totalAmount: true,
         },
       });
 
@@ -291,6 +367,26 @@ export async function updateReservationStatus(
 
       if (!allowedTransitions[reservation.status]?.includes(nextStatus)) {
         throw new Error("INVALID_STATUS_TRANSITION");
+      }
+
+      if (
+        nextStatus === ReservationStatus.CHECKED_IN ||
+        nextStatus === ReservationStatus.CHECKED_OUT
+      ) {
+        const paymentTotal = await tx.payment.aggregate({
+          where: {
+            reservationId: reservation.id,
+            status: PaymentStatus.COMPLETED,
+          },
+          _sum: { amount: true },
+        });
+
+        const amountPaid = paymentTotal._sum.amount ?? new Prisma.Decimal(0);
+
+        if (amountPaid.lt(reservation.totalAmount)) {
+          const remaining = reservation.totalAmount.minus(amountPaid);
+          throw new Error(`FULL_PAYMENT_REQUIRED:${remaining.toFixed(2)}`);
+        }
       }
 
       if (nextStatus === ReservationStatus.CHECKED_IN) {
@@ -394,6 +490,14 @@ export async function updateReservationStatus(
           success: false,
           message:
             "This room is not currently available. Check its status before checking in.",
+        };
+      }
+
+      if (error.message.startsWith("FULL_PAYMENT_REQUIRED:")) {
+        const remaining = error.message.split(":")[1];
+        return {
+          success: false,
+          message: `The full room price must be paid before check-in or check-out. Remaining balance: ETB ${remaining}.`,
         };
       }
     }

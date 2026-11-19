@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import DeleteGuestButton from "@/components/guests/delete-guest-button";
-
+import { can } from "@/lib/permissions";
+import { requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,8 @@ type Props = {
 };
 
 export default async function GuestDetailsPage({ params }: Props) {
+  const user = await requirePermission("guests:view");
+  const canDeleteGuest = can(user.role, "guests:delete");
   const { id } = await params;
 
   const guest = await prisma.guest.findUnique({
@@ -176,11 +179,13 @@ export default async function GuestDetailsPage({ params }: Props) {
 >
   Edit Guest
 </Link>
- <DeleteGuestButton
-    guestId={guest.id}
-    guestName={`${guest.firstName} ${guest.lastName}`}
-    hasReservations={guest.reservations.length > 0}
-  />
+ {canDeleteGuest && (
+   <DeleteGuestButton
+      guestId={guest.id}
+      guestName={`${guest.firstName} ${guest.lastName}`}
+      hasReservations={guest.reservations.length > 0}
+    />
+  )}
         </section>
 
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">

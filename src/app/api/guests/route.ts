@@ -1,8 +1,12 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireApiPermission } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
+  const denied = await requireApiPermission("guests:create");
+  if (denied) return denied;
+
   try {
     const body = await request.json();
 

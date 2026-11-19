@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   createReservation,
   updateReservationStatus,
@@ -28,6 +29,8 @@ type Reservation = {
   children: number;
   status: ReservationStatus;
   totalAmount: number;
+  amountPaid: number;
+  balance: number;
 };
 
 type Room = {
@@ -35,8 +38,10 @@ type Room = {
   roomNumber: string;
   name: string;
   type: string;
+  status: string;
   capacity: number;
   pricePerNight: number;
+  bookings: { checkIn: string; checkOut: string }[];
 };
 
 type Props = {
@@ -65,6 +70,16 @@ function localDateString(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function isRoomBookable(room: Room, checkIn: string, checkOut: string) {
+  if (room.status !== "AVAILABLE") return false;
+  if (!checkIn || !checkOut || checkOut <= checkIn) return true;
+
+  return !room.bookings.some(
+    (booking) =>
+      booking.checkIn < checkOut && checkIn < booking.checkOut
+  );
 }
 
 export default function ReservationsManager({
@@ -99,10 +114,19 @@ export default function ReservationsManager({
   const [adults, setAdults] = useState("1");
   const [children, setChildren] = useState("0");
   const [notes, setNotes] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [paymentTransactionRef, setPaymentTransactionRef] = useState("");
   const [message, setMessage] = useState("");
   const [messageSuccess, setMessageSuccess] = useState(false);
 
-  const selectedRoom = rooms.find((room) => room.id === roomId);
+  const availableRooms = useMemo(
+    () =>
+      rooms.filter((room) => isRoomBookable(room, checkIn, checkOut)),
+    [rooms, checkIn, checkOut]
+  );
+
+  const selectedRoom = availableRooms.find((room) => room.id === roomId);
 
   const nights =
     checkIn && checkOut
@@ -115,6 +139,50 @@ export default function ReservationsManager({
     selectedRoom && nights > 0
       ? selectedRoom.pricePerNight * nights
       : 0;
+
+  const minimumDeposit = estimatedTotal / 2;
+  const suggestedDeposit = Math.ceil(minimumDeposit * 100) / 100;
+  const depositEntered = Number(paymentAmount);
+  const depositIsValid =
+    Number.isFinite(depositEntered) &&
+    depositEntered >= minimumDeposit &&
+    minimumDeposit > 0;
+
+  function syncDeposit(
+    nextRoomId: string,
+    nextCheckIn: string,
+    nextCheckOut: string
+  ) {
+    const nextRoom = rooms.find((room) => room.id === nextRoomId);
+
+    if (
+      nextRoomId &&
+      (!nextRoom ||
+        !isRoomBookable(nextRoom, nextCheckIn, nextCheckOut))
+    ) {
+      setRoomId("");
+      setPaymentAmount("");
+      return;
+    }
+
+    const nextNights =
+      nextCheckIn && nextCheckOut
+        ? (new Date(`${nextCheckOut}T00:00:00Z`).getTime() -
+            new Date(`${nextCheckIn}T00:00:00Z`).getTime()) /
+          (1000 * 60 * 60 * 24)
+        : 0;
+    const nextMinimum =
+      nextRoom && nextNights > 0
+        ? (nextRoom.pricePerNight * nextNights) / 2
+        : 0;
+
+    if (
+      nextMinimum > 0 &&
+      Math.abs(depositEntered - minimumDeposit) < 0.005
+    ) {
+      setPaymentAmount((Math.ceil(nextMinimum * 100) / 100).toFixed(2));
+    }
+  }
 
   const filteredReservations = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -156,6 +224,9 @@ export default function ReservationsManager({
     setNotes("");
     setAdults("1");
     setChildren("0");
+    setPaymentAmount("");
+    setPaymentMethod("CASH");
+    setPaymentTransactionRef("");
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -183,6 +254,9 @@ export default function ReservationsManager({
         adults: Number(adults),
         children: Number(children),
         notes,
+        paymentAmount: Number(paymentAmount),
+        paymentMethod,
+        paymentTransactionRef,
       });
 
       setMessage(result.message);
@@ -305,10 +379,11 @@ function handleStatusUpdate(
               </p>
             </div>
 
-            {rooms.length === 0 ? (
+            {availableRooms.length === 0 ? (
               <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
-                No rooms are currently marked as available. Add or update a
-                room before creating a reservation.
+                No rooms are free for these dates. Occupied, booked and
+                under-maintenance rooms are hidden. Change the dates or update
+                a room before creating a reservation.
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -379,11 +454,15 @@ function handleStatusUpdate(
                       <select
                         required
                         value={roomId}
-                        onChange={(event) => setRoomId(event.target.value)}
+                        onChange={(event) => {
+                          const nextRoomId = event.target.value;
+                          setRoomId(nextRoomId);
+                          syncDeposit(nextRoomId, checkIn, checkOut);
+                        }}
                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                       >
                         <option value="">Choose an available room</option>
-                        {rooms.map((room) => (
+                        {availableRooms.map((room) => (
                           <option key={room.id} value={room.id}>
                             Room {room.roomNumber}
                             {room.name ? ` — ${room.name}` : ""}
@@ -394,6 +473,11 @@ function handleStatusUpdate(
                           </option>
                         ))}
                       </select>
+                      <span className="mt-1 block text-xs text-slate-500">
+                        {availableRooms.length === 0
+                          ? "No rooms are free for these dates. Occupied, booked and maintenance rooms are hidden."
+                          : "Occupied, booked and maintenance rooms are hidden."}
+                      </span>
                     </label>
 
                     <label className="text-sm font-medium text-slate-700">
@@ -402,7 +486,11 @@ function handleStatusUpdate(
                         required
                         type="date"
                         value={checkIn}
-                        onChange={(event) => setCheckIn(event.target.value)}
+                        onChange={(event) => {
+                          const nextCheckIn = event.target.value;
+                          setCheckIn(nextCheckIn);
+                          syncDeposit(roomId, nextCheckIn, checkOut);
+                        }}
                         className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                       />
                     </label>
@@ -414,7 +502,11 @@ function handleStatusUpdate(
                         type="date"
                         min={checkIn || undefined}
                         value={checkOut}
-                        onChange={(event) => setCheckOut(event.target.value)}
+                        onChange={(event) => {
+                          const nextCheckOut = event.target.value;
+                          setCheckOut(nextCheckOut);
+                          syncDeposit(roomId, checkIn, nextCheckOut);
+                        }}
                         className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                       />
                     </label>
@@ -470,6 +562,90 @@ function handleStatusUpdate(
                       </p>
                     </div>
                   )}
+                </div>
+
+                <div className="border-t border-slate-100 pt-6">
+                  <h3 className="mb-3 text-sm font-semibold text-slate-700">
+                    Reservation deposit
+                  </h3>
+
+                  <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+                    At least 50% of the room total ({formatETB(minimumDeposit)})
+                    must be paid when the reservation is made. The remaining
+                    balance must be paid before check-in or check-out.
+                  </p>
+
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <label className="text-sm font-medium text-slate-700">
+                      Deposit amount *
+                      <input
+                        required
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={paymentAmount}
+                        onChange={(event) =>
+                          setPaymentAmount(event.target.value)
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        placeholder="Amount paid now"
+                      />
+                      <span
+                        className={`mt-1 block text-xs ${
+                          paymentAmount && !depositIsValid
+                            ? "text-red-600"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {minimumDeposit <= 0
+                          ? "Choose a room and dates to see the minimum."
+                          : paymentAmount && !depositIsValid
+                            ? `Below the ${formatETB(minimumDeposit)} minimum.`
+                            : `Minimum: ${formatETB(minimumDeposit)}.`}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={minimumDeposit <= 0}
+                        onClick={() =>
+                          setPaymentAmount(suggestedDeposit.toFixed(2))
+                        }
+                        className="mt-1 text-xs font-semibold text-teal-700 hover:underline disabled:opacity-50"
+                      >
+                        Use 50% deposit
+                      </button>
+                    </label>
+
+                    <label className="text-sm font-medium text-slate-700">
+                      Payment method *
+                      <select
+                        required
+                        value={paymentMethod}
+                        onChange={(event) =>
+                          setPaymentMethod(event.target.value)
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                      >
+                        <option value="CASH">Cash</option>
+                        <option value="BANK_TRANSFER">Bank transfer</option>
+                        <option value="TELEBIRR">Telebirr</option>
+                        <option value="CARD">Card</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </label>
+
+                    <label className="text-sm font-medium text-slate-700">
+                      Transaction reference (optional)
+                      <input
+                        maxLength={191}
+                        value={paymentTransactionRef}
+                        onChange={(event) =>
+                          setPaymentTransactionRef(event.target.value)
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        placeholder="Receipt or transaction ID"
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="border-t border-slate-100 pt-6">
@@ -556,7 +732,7 @@ function handleStatusUpdate(
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="w-full min-w-[1050px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-5 py-4 font-semibold">Guest</th>
@@ -564,6 +740,8 @@ function handleStatusUpdate(
                     <th className="px-5 py-4 font-semibold">Stay dates</th>
                     <th className="px-5 py-4 font-semibold">Guests</th>
                     <th className="px-5 py-4 font-semibold">Total</th>
+                    <th className="px-5 py-4 font-semibold">Paid</th>
+                    <th className="px-5 py-4 font-semibold">Balance</th>
                     <th className="px-5 py-4 font-semibold">Status</th>
                     <th className="px-5 py-4 font-semibold">Booking code</th>
                     <th className="px-5 py-4 font-semibold">Actions</th>
@@ -600,6 +778,18 @@ function handleStatusUpdate(
                       </td>
                       <td className="px-5 py-4 font-semibold">
                         {formatETB(reservation.totalAmount)}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">
+                        {formatETB(reservation.amountPaid)}
+                      </td>
+                      <td
+                        className={`px-5 py-4 font-semibold ${
+                          reservation.balance > 0
+                            ? "text-red-600"
+                            : "text-emerald-600"
+                        }`}
+                      >
+                        {formatETB(reservation.balance)}
                       </td>
                       <td className="px-5 py-4">
                         <span
@@ -656,8 +846,13 @@ function handleStatusUpdate(
         onClick={() =>
           handleStatusUpdate(reservation.id, "CHECKED_IN")
         }
-        disabled={isPending}
-        className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+        disabled={isPending || reservation.balance > 0}
+        title={
+          reservation.balance > 0
+            ? "Pay the full room price before check-in"
+            : undefined
+        }
+        className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         Check in
       </button>
@@ -669,12 +864,27 @@ function handleStatusUpdate(
         onClick={() =>
           handleStatusUpdate(reservation.id, "CHECKED_OUT")
         }
-        disabled={isPending}
-        className="rounded-lg bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700"
+        disabled={isPending || reservation.balance > 0}
+        title={
+          reservation.balance > 0
+            ? "Pay the full room price before check-out"
+            : undefined
+        }
+        className="rounded-lg bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         Check out
       </button>
     )}
+
+    {reservation.balance > 0 &&
+      ["CONFIRMED", "CHECKED_IN"].includes(reservation.status) && (
+        <Link
+          href="/payments/new"
+          className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700"
+        >
+          Pay balance
+        </Link>
+      )}
 
     {["CHECKED_OUT", "CANCELLED", "NO_SHOW"].includes(
       reservation.status

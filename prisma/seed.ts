@@ -1,7 +1,13 @@
 
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, RoomType, RoomStatus } from "../src/generated/prisma/client";
+import {
+  PrismaClient,
+  RoomType,
+  RoomStatus,
+  UserRole,
+} from "../src/generated/prisma/client.ts";
+import { hashPassword } from "../src/lib/password.ts";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -65,7 +71,43 @@ async function main() {
     });
   }
 
-  console.log(`Seed complete. Checked ${rooms.length} sample rooms.`);
+  const users = [
+    {
+      name: "Alice Admin",
+      email: "admin@havenstay.test",
+      password: "Admin@123",
+      role: UserRole.ADMIN,
+    },
+    {
+      name: "Marta Manager",
+      email: "manager@havenstay.test",
+      password: "Manager@123",
+      role: UserRole.MANAGER,
+    },
+    {
+      name: "Sam Receptionist",
+      email: "receptionist@havenstay.test",
+      password: "Staff@123",
+      role: UserRole.RECEPTIONIST,
+    },
+  ];
+
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: { name: user.name, role: user.role, active: true },
+      create: {
+        name: user.name,
+        email: user.email,
+        passwordHash: hashPassword(user.password),
+        role: user.role,
+      },
+    });
+  }
+
+  console.log(
+    `Seed complete. Checked ${rooms.length} sample rooms and ${users.length} staff accounts.`
+  );
 }
 
 main()
