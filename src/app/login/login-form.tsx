@@ -2,32 +2,55 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { Building2, ShieldCheck } from "lucide-react";
+import type { UserRole } from "@/generated/prisma/client";
+import { roleLabels } from "@/lib/permissions";
+import ThemeToggle from "@/components/theme-toggle";
 import { signIn } from "./actions";
 
-const demoAccounts = [
+const demoAccounts: {
+  role: UserRole;
+  email: string;
+  password: string;
+  access: string;
+}[] = [
   {
-    label: "Administrator",
+    role: "ADMIN",
     email: "admin@havenstay.test",
     password: "Admin@123",
     access: "Everything, including staff accounts",
   },
   {
-    label: "Manager",
+    role: "MANAGER",
     email: "manager@havenstay.test",
     password: "Manager@123",
     access: "Operations, payments, reports, settings",
   },
   {
-    label: "Receptionist",
+    role: "RECEPTIONIST",
     email: "receptionist@havenstay.test",
     password: "Staff@123",
     access: "Rooms, reservations, guests, payments",
   },
 ];
 
-export default function LoginForm() {
+function inferRoleFromEmail(value: string): UserRole {
+  const prefix = value.split("@")[0]?.toLowerCase() ?? "";
+
+  if (prefix.startsWith("admin")) return "ADMIN";
+  if (prefix.startsWith("manager")) return "MANAGER";
+  if (prefix.startsWith("reception")) return "RECEPTIONIST";
+
+  return "ADMIN";
+}
+
+export default function LoginForm({
+  guesthouseName,
+}: {
+  guesthouseName: string;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("ADMIN");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -54,8 +77,13 @@ export default function LoginForm() {
                 <Building2 size={22} />
               </div>
               <div>
-                <p className="text-lg font-bold">HavenStay</p>
-                <p className="text-xs text-teal-200">GUESTHOUSE MANAGER</p>
+                <p className="text-lg font-bold">{guesthouseName}</p>
+                <p className="text-xs text-teal-200">
+                  {roleLabels[selectedRole].toUpperCase()}
+                </p>
+              </div>
+              <div className="ml-auto">
+                <ThemeToggle />
               </div>
             </div>
 
@@ -101,7 +129,10 @@ export default function LoginForm() {
                   required
                   autoComplete="username"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setSelectedRole(inferRoleFromEmail(event.target.value));
+                  }}
                   className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                   placeholder="you@havenstay.test"
                 />
@@ -141,13 +172,14 @@ export default function LoginForm() {
                     onClick={() => {
                       setEmail(account.email);
                       setPassword(account.password);
+                      setSelectedRole(account.role);
                       setError("");
                     }}
                     className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-teal-300 hover:bg-teal-50"
                   >
                     <span>
                       <span className="block text-sm font-semibold text-slate-800">
-                        {account.label}
+                        {roleLabels[account.role]}
                       </span>
                       <span className="block text-xs text-slate-500">
                         {account.access}

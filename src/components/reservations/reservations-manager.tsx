@@ -1,13 +1,23 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   createReservation,
   updateReservationStatus,
 } from "@/app/reservations/actions";
+import {
+  resetReservationDraft,
+  setReservationDraft,
+  setReservationFormOpen,
+  setReservationSearch,
+  setReservationStatusFilter,
+  type ReservationDraft,
+  useAppDispatch,
+  useAppSelector,
+} from "@/store";
 
 type ReservationStatus =
   | "PENDING"
@@ -25,12 +35,17 @@ type Reservation = {
   roomNumber: string;
   checkIn: string;
   checkOut: string;
+  openEnded: boolean;
   adults: number;
   children: number;
   status: ReservationStatus;
   totalAmount: number;
   amountPaid: number;
   balance: number;
+  currentNights: number;
+  currentTotal: number;
+  currentBalance: number;
+  extraNights: number;
 };
 
 type Room = {
@@ -87,60 +102,108 @@ export default function ReservationsManager({
   rooms,
 }: Props) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const reservations = initialReservations;
 
-  const [reservations, setReservations] =
-    useState(initialReservations);
-    useEffect(() => {
-  setReservations(initialReservations);
-}, [initialReservations]);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [showForm, setShowForm] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [roomId, setRoomId] = useState("");
-  const [checkIn, setCheckIn] = useState(() =>
-    localDateString(new Date())
-  );
-  const [checkOut, setCheckOut] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return localDateString(tomorrow);
-  });
-  const [adults, setAdults] = useState("1");
-  const [children, setChildren] = useState("0");
-  const [notes, setNotes] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [paymentTransactionRef, setPaymentTransactionRef] = useState("");
   const [message, setMessage] = useState("");
   const [messageSuccess, setMessageSuccess] = useState(false);
 
+  const search = useAppSelector((state) => state.ui.reservationSearch);
+  const statusFilter = useAppSelector(
+    (state) => state.ui.reservationStatusFilter
+  );
+  const showForm = useAppSelector(
+    (state) => state.ui.reservationFormOpen
+  );
+  const draft = useAppSelector((state) => state.reservationDraft);
+  const guesthouseName = useAppSelector(
+    (state) => state.ui.guesthouseName
+  );
+
+  const defaultCheckIn = localDateString(new Date());
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const defaultCheckOut = localDateString(tomorrow);
+
+  const firstName = draft.firstName;
+  const lastName = draft.lastName;
+  const phone = draft.phone;
+  const email = draft.email;
+  const roomId = draft.roomId;
+  const checkIn = draft.checkIn || defaultCheckIn;
+  const checkOut = draft.checkOut || defaultCheckOut;
+  const openEnded = draft.openEnded;
+  const adults = draft.adults;
+  const children = draft.children;
+  const notes = draft.notes;
+  const paymentAmount = draft.paymentAmount;
+  const paymentMethod = draft.paymentMethod;
+  const paymentTransactionRef = draft.paymentTransactionRef;
+
+  const setSearch = (value: string) =>
+    dispatch(setReservationSearch(value));
+  const setStatusFilter = (value: string) =>
+    dispatch(setReservationStatusFilter(value));
+  const setShowForm = (value: boolean) =>
+    dispatch(setReservationFormOpen(value));
+
+  const updateDraft = (patch: Partial<ReservationDraft>) =>
+    dispatch(setReservationDraft(patch));
+  const setFirstName = (value: string) => updateDraft({ firstName: value });
+  const setLastName = (value: string) => updateDraft({ lastName: value });
+  const setPhone = (value: string) => updateDraft({ phone: value });
+  const setEmail = (value: string) => updateDraft({ email: value });
+  const setRoomId = (value: string) => updateDraft({ roomId: value });
+  const setCheckIn = (value: string) => updateDraft({ checkIn: value });
+  const setCheckOut = (value: string) => updateDraft({ checkOut: value });
+  const setOpenEnded = (value: boolean) =>
+    updateDraft({ openEnded: value });
+  const setAdults = (value: string) => updateDraft({ adults: value });
+  const setChildren = (value: string) => updateDraft({ children: value });
+  const setNotes = (value: string) => updateDraft({ notes: value });
+  const setPaymentAmount = (value: string) =>
+    updateDraft({ paymentAmount: value });
+  const setPaymentMethod = (value: string) =>
+    updateDraft({ paymentMethod: value });
+  const setPaymentTransactionRef = (value: string) =>
+    updateDraft({ paymentTransactionRef: value });
+
+  const openStayCheckOut = useMemo(() => {
+    if (!checkIn) return checkOut;
+
+    const date = new Date(`${checkIn}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+  }, [checkIn, checkOut]);
+
+  const effectiveCheckOut = openEnded ? openStayCheckOut : checkOut;
+
   const availableRooms = useMemo(
     () =>
-      rooms.filter((room) => isRoomBookable(room, checkIn, checkOut)),
-    [rooms, checkIn, checkOut]
+      rooms.filter((room) =>
+        isRoomBookable(room, checkIn, effectiveCheckOut)
+      ),
+    [rooms, checkIn, effectiveCheckOut]
   );
 
   const selectedRoom = availableRooms.find((room) => room.id === roomId);
 
   const nights =
-    checkIn && checkOut
-      ? (new Date(`${checkOut}T00:00:00Z`).getTime() -
+    checkIn && effectiveCheckOut
+      ? (new Date(`${effectiveCheckOut}T00:00:00Z`).getTime() -
           new Date(`${checkIn}T00:00:00Z`).getTime()) /
         (1000 * 60 * 60 * 24)
       : 0;
 
+  const chargedNights = openEnded && checkIn ? 1 : nights;
+
   const estimatedTotal =
-    selectedRoom && nights > 0
-      ? selectedRoom.pricePerNight * nights
+    selectedRoom && chargedNights > 0
+      ? selectedRoom.pricePerNight * chargedNights
       : 0;
 
-  const minimumDeposit = estimatedTotal / 2;
+  const minimumDeposit = openEnded ? estimatedTotal : estimatedTotal / 2;
   const suggestedDeposit = Math.ceil(minimumDeposit * 100) / 100;
   const depositEntered = Number(paymentAmount);
   const depositIsValid =
@@ -151,14 +214,23 @@ export default function ReservationsManager({
   function syncDeposit(
     nextRoomId: string,
     nextCheckIn: string,
-    nextCheckOut: string
+    nextCheckOut: string,
+    nextOpenEnded: boolean = openEnded
   ) {
     const nextRoom = rooms.find((room) => room.id === nextRoomId);
+    const nextCheckOutForBooking =
+      nextOpenEnded && nextCheckIn
+        ? new Date(
+            new Date(`${nextCheckIn}T00:00:00Z`).getTime() + 86400000
+          )
+            .toISOString()
+            .slice(0, 10)
+        : nextCheckOut;
 
     if (
       nextRoomId &&
       (!nextRoom ||
-        !isRoomBookable(nextRoom, nextCheckIn, nextCheckOut))
+        !isRoomBookable(nextRoom, nextCheckIn, nextCheckOutForBooking))
     ) {
       setRoomId("");
       setPaymentAmount("");
@@ -166,14 +238,16 @@ export default function ReservationsManager({
     }
 
     const nextNights =
-      nextCheckIn && nextCheckOut
-        ? (new Date(`${nextCheckOut}T00:00:00Z`).getTime() -
+      nextCheckIn && nextCheckOutForBooking
+        ? (new Date(`${nextCheckOutForBooking}T00:00:00Z`).getTime() -
             new Date(`${nextCheckIn}T00:00:00Z`).getTime()) /
           (1000 * 60 * 60 * 24)
         : 0;
     const nextMinimum =
       nextRoom && nextNights > 0
-        ? (nextRoom.pricePerNight * nextNights) / 2
+        ? nextOpenEnded
+          ? nextRoom.pricePerNight * nextNights
+          : (nextRoom.pricePerNight * nextNights) / 2
         : 0;
 
     if (
@@ -216,17 +290,7 @@ export default function ReservationsManager({
   ).length;
 
   function resetForm() {
-    setFirstName("");
-    setLastName("");
-    setPhone("");
-    setEmail("");
-    setRoomId("");
-    setNotes("");
-    setAdults("1");
-    setChildren("0");
-    setPaymentAmount("");
-    setPaymentMethod("CASH");
-    setPaymentTransactionRef("");
+    dispatch(resetReservationDraft());
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -234,8 +298,10 @@ export default function ReservationsManager({
     const dayAfter = new Date();
     dayAfter.setDate(dayAfter.getDate() + 2);
 
-    setCheckIn(localDateString(tomorrow));
-    setCheckOut(localDateString(dayAfter));
+    updateDraft({
+      checkIn: localDateString(tomorrow),
+      checkOut: localDateString(dayAfter),
+    });
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -250,7 +316,8 @@ export default function ReservationsManager({
         email,
         roomId,
         checkIn,
-        checkOut,
+        checkOut: openEnded ? "" : checkOut,
+        openEnded,
         adults: Number(adults),
         children: Number(children),
         notes,
@@ -303,7 +370,7 @@ function handleStatusUpdate(
         <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-medium text-teal-700">
-              HAVENSTAY / OPERATIONS
+              {guesthouseName.toUpperCase()} / OPERATIONS
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">
               Reservations
@@ -496,19 +563,39 @@ function handleStatusUpdate(
                     </label>
 
                     <label className="text-sm font-medium text-slate-700">
-                      Check-out *
+                      Check-out {openEnded ? "" : "*"}
                       <input
-                        required
+                        required={!openEnded}
+                        disabled={openEnded}
                         type="date"
                         min={checkIn || undefined}
-                        value={checkOut}
+                        value={openEnded ? openStayCheckOut : checkOut}
                         onChange={(event) => {
                           const nextCheckOut = event.target.value;
                           setCheckOut(nextCheckOut);
                           syncDeposit(roomId, checkIn, nextCheckOut);
                         }}
-                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-normal outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-100 disabled:text-slate-500"
                       />
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700 sm:col-span-2 lg:col-span-3">
+                      <input
+                        type="checkbox"
+                        checked={openEnded}
+                        onChange={(event) => {
+                          const nextOpenEnded = event.target.checked;
+                          setOpenEnded(nextOpenEnded);
+                          syncDeposit(
+                            roomId,
+                            checkIn,
+                            checkOut,
+                            nextOpenEnded
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      />
+                      Check-out date not known yet (open stay, charged nightly)
                     </label>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -548,9 +635,9 @@ function handleStatusUpdate(
                             Estimated stay total
                           </p>
                           <p className="mt-1 text-xs text-teal-700">
-                            {nights > 0
-                              ? `${nights} night${nights === 1 ? "" : "s"} × ${formatETB(selectedRoom.pricePerNight)}`
-                              : "Choose a valid check-out date after check-in."}
+                            {chargedNights > 0
+                              ? `${chargedNights} night${chargedNights === 1 ? "" : "s"} × ${formatETB(selectedRoom.pricePerNight)}${openEnded ? " — first night charged now, extra nights at checkout" : ""}`
+                              : "Choose a valid check-in date."}
                           </p>
                         </div>
                         <p className="text-xl font-bold text-teal-900">
@@ -566,13 +653,13 @@ function handleStatusUpdate(
 
                 <div className="border-t border-slate-100 pt-6">
                   <h3 className="mb-3 text-sm font-semibold text-slate-700">
-                    Reservation deposit
+                    Reservation payment
                   </h3>
 
                   <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
-                    At least 50% of the room total ({formatETB(minimumDeposit)})
-                    must be paid when the reservation is made. The remaining
-                    balance must be paid before check-in or check-out.
+                    {openEnded
+                      ? `Open stays require the full first-night price (${formatETB(minimumDeposit)}). Extra nights are charged at the nightly rate and must be cleared before check-out.`
+                      : `At least 50% of the room total (${formatETB(minimumDeposit)}) must be paid when the reservation is made. The remaining balance must be paid before check-in or check-out.`}
                   </p>
 
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -611,7 +698,7 @@ function handleStatusUpdate(
                         }
                         className="mt-1 text-xs font-semibold text-teal-700 hover:underline disabled:opacity-50"
                       >
-                        Use 50% deposit
+                        {openEnded ? "Use first-night price" : "Use 50% deposit"}
                       </button>
                     </label>
 
@@ -768,7 +855,9 @@ function handleStatusUpdate(
                       <td className="px-5 py-4">
                         <p>{reservation.checkIn}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          to {reservation.checkOut}
+                          {reservation.openEnded
+                            ? `Open · ${reservation.currentNights} night${reservation.currentNights === 1 ? "" : "s"} so far`
+                            : `to ${reservation.checkOut}`}
                         </p>
                       </td>
                       <td className="px-5 py-4 text-slate-600">
@@ -777,19 +866,25 @@ function handleStatusUpdate(
                           `, ${reservation.children} child(ren)`}
                       </td>
                       <td className="px-5 py-4 font-semibold">
-                        {formatETB(reservation.totalAmount)}
+                        {formatETB(reservation.currentTotal)}
+                        {reservation.extraNights > 0 && (
+                          <p className="mt-1 text-xs font-medium text-amber-700">
+                            +{reservation.extraNights} extra night
+                            {reservation.extraNights === 1 ? "" : "s"}
+                          </p>
+                        )}
                       </td>
                       <td className="px-5 py-4 text-slate-600">
                         {formatETB(reservation.amountPaid)}
                       </td>
                       <td
                         className={`px-5 py-4 font-semibold ${
-                          reservation.balance > 0
+                          reservation.currentBalance > 0
                             ? "text-red-600"
                             : "text-emerald-600"
                         }`}
                       >
-                        {formatETB(reservation.balance)}
+                        {formatETB(reservation.currentBalance)}
                       </td>
                       <td className="px-5 py-4">
                         <span
@@ -846,9 +941,9 @@ function handleStatusUpdate(
         onClick={() =>
           handleStatusUpdate(reservation.id, "CHECKED_IN")
         }
-        disabled={isPending || reservation.balance > 0}
+        disabled={isPending || reservation.currentBalance > 0}
         title={
-          reservation.balance > 0
+          reservation.currentBalance > 0
             ? "Pay the full room price before check-in"
             : undefined
         }
@@ -864,10 +959,10 @@ function handleStatusUpdate(
         onClick={() =>
           handleStatusUpdate(reservation.id, "CHECKED_OUT")
         }
-        disabled={isPending || reservation.balance > 0}
+        disabled={isPending || reservation.currentBalance > 0}
         title={
-          reservation.balance > 0
-            ? "Pay the full room price before check-out"
+          reservation.currentBalance > 0
+            ? "Pay the room total and any extra nights before check-out"
             : undefined
         }
         className="rounded-lg bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -876,7 +971,7 @@ function handleStatusUpdate(
       </button>
     )}
 
-    {reservation.balance > 0 &&
+    {reservation.currentBalance > 0 &&
       ["CONFIRMED", "CHECKED_IN"].includes(reservation.status) && (
         <Link
           href="/payments/new"
@@ -905,7 +1000,7 @@ function handleStatusUpdate(
         </section>
 
         <p className="text-center text-xs text-slate-400">
-          HavenStay · Guest House Management System
+          {guesthouseName} · Guest House Management System
         </p>
       </div>
     </main>

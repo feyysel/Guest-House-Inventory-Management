@@ -1,7 +1,9 @@
 
 import { NextResponse } from "next/server";
+import { DEFAULT_GUESTHOUSE_NAME } from "@/lib/branding";
 import { prisma } from "@/lib/db";
 import { requireApiPermission } from "@/lib/api-auth";
+import { CACHE_KEYS, cachedJson } from "@/lib/redis-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -29,112 +31,121 @@ export async function GET() {
   if (denied) return denied;
 
   try {
-    const { start, end } = getAddisAbabaDayRange();
+    const data = await cachedJson(
+      CACHE_KEYS.dashboard,
+      15,
+      async () => {
+        const { start, end } = getAddisAbabaDayRange();
 
-    const [
-      rooms,
-      totalRooms,
-      availableRooms,
-      occupiedRooms,
-      maintenanceRooms,
-      inactiveRooms,
-      pendingReservations,
-      todayArrivals,
-      todayDepartures,
-      todayRevenue,
-      recentReservations,
-      settings,
-    ] = await Promise.all([
-      prisma.room.findMany({
-        orderBy: { roomNumber: "asc" },
-        select: {
-          id: true,
-          roomNumber: true,
-          name: true,
-          type: true,
-          status: true,
-          pricePerNight: true,
-        },
-      }),
-      prisma.room.count(),
-      prisma.room.count({ where: { status: "AVAILABLE" } }),
-      prisma.room.count({ where: { status: "OCCUPIED" } }),
-      prisma.room.count({ where: { status: "MAINTENANCE" } }),
-      prisma.room.count({ where: { status: "INACTIVE" } }),
-      prisma.reservation.count({
-        where: { status: "PENDING" },
-      }),
-      prisma.reservation.count({
-        where: {
-          checkIn: { gte: start, lt: end },
-          status: { notIn: ["CANCELLED", "NO_SHOW"] },
-        },
-      }),
-      prisma.reservation.count({
-        where: {
-          checkOut: { gte: start, lt: end },
-          status: { notIn: ["CANCELLED", "NO_SHOW"] },
-        },
-      }),
-      prisma.payment.aggregate({
-        where: {
-          status: "COMPLETED",
-          paidAt: { gte: start, lt: end },
-        },
-        _sum: { amount: true },
-      }),
-      prisma.reservation.findMany({
-        take: 8,
-        orderBy: { createdAt: "desc" },
-        include: {
-          guest: {
-            select: { firstName: true, lastName: true },
-          },
-          room: {
-            select: { roomNumber: true, type: true },
-          },
-        },
-      }),
-      prisma.guestHouseSettings.findFirst(),
-    ]);
+        const [
+          rooms,
+          totalRooms,
+          availableRooms,
+          occupiedRooms,
+          maintenanceRooms,
+          inactiveRooms,
+          pendingReservations,
+          todayArrivals,
+          todayDepartures,
+          todayRevenue,
+          recentReservations,
+          settings,
+        ] = await Promise.all([
+          prisma.room.findMany({
+            orderBy: { roomNumber: "asc" },
+            select: {
+              id: true,
+              roomNumber: true,
+              name: true,
+              type: true,
+              status: true,
+              pricePerNight: true,
+            },
+          }),
+          prisma.room.count(),
+          prisma.room.count({ where: { status: "AVAILABLE" } }),
+          prisma.room.count({ where: { status: "OCCUPIED" } }),
+          prisma.room.count({ where: { status: "MAINTENANCE" } }),
+          prisma.room.count({ where: { status: "INACTIVE" } }),
+          prisma.reservation.count({
+            where: { status: "PENDING" },
+          }),
+          prisma.reservation.count({
+            where: {
+              checkIn: { gte: start, lt: end },
+              status: { notIn: ["CANCELLED", "NO_SHOW"] },
+            },
+          }),
+          prisma.reservation.count({
+            where: {
+              checkOut: { gte: start, lt: end },
+              status: { notIn: ["CANCELLED", "NO_SHOW"] },
+            },
+          }),
+          prisma.payment.aggregate({
+            where: {
+              status: "COMPLETED",
+              paidAt: { gte: start, lt: end },
+            },
+            _sum: { amount: true },
+          }),
+          prisma.reservation.findMany({
+            take: 8,
+            orderBy: { createdAt: "desc" },
+            include: {
+              guest: {
+                select: { firstName: true, lastName: true },
+              },
+              room: {
+                select: { roomNumber: true, type: true },
+              },
+            },
+          }),
+          prisma.guestHouseSettings.findFirst(),
+        ]);
 
-    return NextResponse.json({
-      date: start.toISOString(),
-      settings: {
-        guesthouseName:
-          settings?.guesthouseName ?? "HavenStay Guest House",
-        currency: settings?.currency ?? "ETB",
-      },
-      roomStats: {
-        total: totalRooms,
-        available: availableRooms,
-        occupied: occupiedRooms,
-        maintenance: maintenanceRooms,
-        inactive: inactiveRooms,
-      },
-      activity: {
-        arrivals: todayArrivals,
-        departures: todayDepartures,
-        pendingReservations,
-      },
-      todayRevenue: Number(todayRevenue._sum.amount ?? 0),
-      rooms: rooms.map((room) => ({
-        ...room,
-        pricePerNight: Number(room.pricePerNight),
-      })),
-      recentReservations: recentReservations.map((reservation) => ({
-        id: reservation.id,
-        bookingCode: reservation.bookingCode,
-        guest: `${reservation.guest.firstName} ${reservation.guest.lastName}`,
-        room: reservation.room.roomNumber,
-        roomType: reservation.room.type,
-        checkIn: reservation.checkIn,
-        checkOut: reservation.checkOut,
-        amount: Number(reservation.totalAmount),
-        status: reservation.status,
-        createdAt: reservation.createdAt,
-      })),
-    });
+        return {
+          date: start.toISOString(),
+          settings: {
+            guesthouseName:
+              settings?.guesthouseName ?? DEFAULT_GUESTHOUSE_NAME,
+            currency: settings?.currency ?? "ETB",
+          },
+          roomStats: {
+            total: totalRooms,
+            available: availableRooms,
+            occupied: occupiedRooms,
+            maintenance: maintenanceRooms,
+            inactive: inactiveRooms,
+          },
+          activity: {
+            arrivals: todayArrivals,
+            departures: todayDepartures,
+            pendingReservations,
+          },
+          todayRevenue: Number(todayRevenue._sum.amount ?? 0),
+          rooms: rooms.map((room) => ({
+            ...room,
+            pricePerNight: Number(room.pricePerNight),
+          })),
+          recentReservations: recentReservations.map((reservation) => ({
+            id: reservation.id,
+            bookingCode: reservation.bookingCode,
+            guest: `${reservation.guest.firstName} ${reservation.guest.lastName}`,
+            room: reservation.room.roomNumber,
+            roomType: reservation.room.type,
+            checkIn: reservation.checkIn,
+            checkOut: reservation.checkOut,
+            openEnded: reservation.openEnded,
+            amount: Number(reservation.totalAmount),
+            status: reservation.status,
+            createdAt: reservation.createdAt,
+          })),
+        };
+      }
+    );
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Dashboard API error:", error);
 

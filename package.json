@@ -7,19 +7,24 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "redis:up": "docker compose up -d redis",
+    "redis:down": "docker compose down",
     "seed": "node --experimental-strip-types prisma/seed.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@reduxjs/toolkit": "^2.15.0",
     "dotenv": "^18.0.9",
     "lucide-react": "^1.61.0",
     "next": "^16.4.2",
     "pg": "^8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "recharts": "^3.10.1"
+    "react-redux": "^9.3.1",
+    "recharts": "^3.10.1",
+    "redis": "^6.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

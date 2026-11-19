@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireApiPermission } from "@/lib/api-auth";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 
 const paymentStatuses = [
   "PENDING",
@@ -50,6 +51,11 @@ export async function PATCH(request: Request, { params }: Props) {
         status: status as (typeof paymentStatuses)[number],
       },
     });
+
+    await invalidateCache(
+      CACHE_KEYS.dashboard,
+      CACHE_KEYS.paymentReservations
+    );
 
     return NextResponse.json({ payment });
   } catch (error) {

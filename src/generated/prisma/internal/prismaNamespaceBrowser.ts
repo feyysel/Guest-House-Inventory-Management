@@ -128,6 +128,7 @@ export const ReservationScalarFieldEnum = {
   roomId: 'roomId',
   checkIn: 'checkIn',
   checkOut: 'checkOut',
+  openEnded: 'openEnded',
   adults: 'adults',
   children: 'children',
   status: 'status',

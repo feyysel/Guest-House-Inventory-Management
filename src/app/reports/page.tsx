@@ -2,16 +2,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
+import MetricValue from "@/components/metric-value";
+import { useAppSelector } from "@/store";
+
+const ReportBarChart = dynamic(
+  () => import("@/components/reports/report-bar-chart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="skeleton-block"
+        style={{ height: 288, width: "100%" }}
+        aria-hidden="true"
+      />
+    ),
+  }
+);
 
 type ReportSummary = {
   totalRevenue: number;
@@ -99,23 +107,47 @@ function getDateRange(period: Period, today: Date): DateRange | null {
 export default function ReportsPage() {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [dailyRevenue, setDailyRevenue] = useState<DailyRevenue[]>([]);
-  const [reservationAnalytics, setReservationAnalytics] =useState<ReservationAnalytics | null>(null);
-  const [occupancy, setOccupancy] =useState<OccupancyAnalytics | null>(null);
+  const [reservationAnalytics, setReservationAnalytics] =
+    useState<ReservationAnalytics | null>(null);
+  const [occupancy, setOccupancy] = useState<OccupancyAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [fetchError, setFetchError] = useState("");
   const [period, setPeriod] = useState<Period>("thismonth");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const guesthouseName = useAppSelector((state) => state.ui.guesthouseName);
 
-  
+  const rangeError = useMemo(() => {
+    if (period !== "custom") return "";
+    if (!customStart || !customEnd) {
+      return "Select both dates to generate the report.";
+    }
+    if (customStart > customEnd) {
+      return "Start date must be before or equal to end date.";
+    }
+    return "";
+  }, [period, customStart, customEnd]);
+
+  const selectedRange = useMemo<DateRange | null>(() => {
+    if (rangeError) return null;
+    if (period === "custom") {
+      return { startDate: customStart, endDate: customEnd };
+    }
+    return getDateRange(period, new Date());
+  }, [period, customStart, customEnd, rangeError]);
+
+  const hasValidRange = Boolean(selectedRange);
+  const valuesLoading = loading || !hasValidRange;
+  const error = rangeError || fetchError;
+
   function handleExportReport() {
     if (!summary || !reservationAnalytics || !occupancy) {
-      setError("Wait for all report data to load before exporting.");
+      setFetchError("Wait for all report data to load before exporting.");
       return;
     }
 
     const rows = [
-      ["HavenStay Guest House Management System"],
+      [guesthouseName],
       ["Report Period", period],
       ["Occupancy Date", occupancy.date],
       [],
@@ -164,7 +196,12 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `havenstay-report-${occupancy.date}.csv`;
+    const nameSlug =
+      guesthouseName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "guesthouse";
+    link.download = `${nameSlug}-report-${occupancy.date}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -173,36 +210,14 @@ export default function ReportsPage() {
 
 
   useEffect(() => {
-    if (period === "custom" && (!customStart || !customEnd)) {
-      setLoading(false);
-      setError("");
-      return;
-    }
+    if (!selectedRange) return;
 
-    const selectedRange: DateRange | null =
-      period === "custom"
-        ? { startDate: customStart, endDate: customEnd }
-        : getDateRange(period, new Date());
-
-    if (selectedRange === null) {
-      setLoading(false);
-      return;
-    }
-
-    // Copy the validated range into a non-null typed constant.
-    const dateRange: DateRange = selectedRange;
-
-    if (dateRange.startDate > dateRange.endDate) {
-      setLoading(false);
-      setError("Start date must be before or equal to end date.");
-      return;
-    }
-
+    const dateRange = selectedRange;
     const controller = new AbortController();
 
     async function loadReports() {
       setLoading(true);
-      setError("");
+      setFetchError("");
 
       try {
         const params = new URLSearchParams({
@@ -270,20 +285,18 @@ setOccupancy(occupancyData);
           return;
         }
 
-        setError(
+        setFetchError(
           err instanceof Error ? err.message : "Something went wrong."
         );
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     }
 
     void loadReports();
 
     return () => controller.abort();
-  }, [period, customStart, customEnd]);
+  }, [selectedRange]);
 
   const cards = [
     {
@@ -409,11 +422,6 @@ setOccupancy(occupancyData);
             </div>
           )}
 
-          {period === "custom" && (!customStart || !customEnd) && (
-            <p className="mt-3 text-sm text-gray-500">
-              Select both dates to generate the report.
-            </p>
-          )}
         </section>
 
         {error && (
@@ -423,10 +431,6 @@ setOccupancy(occupancyData);
           >
             {error}
           </div>
-        )}
-
-        {loading && (
-          <p className="text-sm text-gray-500">Loading report data...</p>
         )}
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -445,7 +449,9 @@ setOccupancy(occupancyData);
               </div>
 
               <p className="mt-4 break-words text-2xl font-bold text-gray-900">
-                {item.value}
+                <MetricValue loading={valuesLoading} size="lg">
+                  {item.value}
+                </MetricValue>
               </p>
 
               <p className="mt-2 text-sm text-gray-500">
@@ -466,46 +472,32 @@ setOccupancy(occupancyData);
             </p>
           </div>
 
-          {dailyRevenue.length === 0 ? (
+          {valuesLoading ? (
+            <div
+              className="skeleton-block h-72 w-full"
+              aria-hidden="true"
+            />
+          ) : dailyRevenue.length === 0 ? (
             <div className="flex h-72 items-center justify-center text-sm text-gray-500">
               No completed payment revenue for this period.
             </div>
           ) : (
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={dailyRevenue}
-                  margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(value: string) => value.slice(5)}
-                  />
-                  <YAxis
-                    tickFormatter={(value: number) =>
-                      value.toLocaleString()
-                    }
-                  />
-                  <Tooltip
-                    formatter={(value) => [
-                      `${Number(value).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })} ETB`,
-                      "Revenue",
-                    ]}
-                    labelFormatter={(label) => `Date: ${label}`}
-                  />
-                  <Bar
-                    dataKey="revenue"
-                    name="Revenue"
-                    fill="#2563eb"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ReportBarChart
+              data={dailyRevenue as Array<Record<string, string | number>>}
+              xDataKey="date"
+              barDataKey="revenue"
+              barName="Revenue"
+              color="#2563eb"
+              height={288}
+              tickFormatter={(value) => value.slice(5)}
+              tooltipFormatter={(value) =>
+                `${value.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} ETB`
+              }
+              labelPrefix="Date: "
+            />
           )}
         </section>
         
@@ -519,7 +511,12 @@ setOccupancy(occupancyData);
             </p>
           </div>
 
-          {reservationAnalytics === null ? (
+          {valuesLoading ? (
+            <div
+              className="skeleton-block h-80 w-full"
+              aria-hidden="true"
+            />
+          ) : reservationAnalytics === null ? (
             <div className="flex h-72 items-center justify-center text-sm text-gray-500">
               Reservation analytics are not available.
             </div>
@@ -528,57 +525,49 @@ setOccupancy(occupancyData);
               No reservations found for this period.
             </div>
           ) : (
-            <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[
-                    {
-                      status: "Pending",
-                      count: reservationAnalytics.reservationCounts.PENDING,
-                    },
-                    {
-                      status: "Confirmed",
-                      count: reservationAnalytics.reservationCounts.CONFIRMED,
-                    },
-                    {
-                      status: "Checked In",
-                      count: reservationAnalytics.reservationCounts.CHECKED_IN,
-                    },
-                    {
-                      status: "Checked Out",
-                      count: reservationAnalytics.reservationCounts.CHECKED_OUT,
-                    },
-                    {
-                      status: "Cancelled",
-                      count: reservationAnalytics.reservationCounts.CANCELLED,
-                    },
-                    {
-                      status: "No Show",
-                      count: reservationAnalytics.reservationCounts.NO_SHOW,
-                    },
-                  ]}
-                  margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="status" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar
-                    dataKey="count"
-                    name="Reservations"
-                    fill="#0d9488"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ReportBarChart
+              data={[
+                {
+                  status: "Pending",
+                  count: reservationAnalytics.reservationCounts.PENDING,
+                },
+                {
+                  status: "Confirmed",
+                  count: reservationAnalytics.reservationCounts.CONFIRMED,
+                },
+                {
+                  status: "Checked In",
+                  count: reservationAnalytics.reservationCounts.CHECKED_IN,
+                },
+                {
+                  status: "Checked Out",
+                  count: reservationAnalytics.reservationCounts.CHECKED_OUT,
+                },
+                {
+                  status: "Cancelled",
+                  count: reservationAnalytics.reservationCounts.CANCELLED,
+                },
+                {
+                  status: "No Show",
+                  count: reservationAnalytics.reservationCounts.NO_SHOW,
+                },
+              ]}
+              xDataKey="status"
+              barDataKey="count"
+              barName="Reservations"
+              color="#0d9488"
+              height={320}
+              allowDecimals={false}
+            />
           )}
 
           {reservationAnalytics !== null && (
             <p className="mt-4 text-sm text-gray-600">
               Total reservations:{" "}
               <span className="font-semibold text-gray-900">
-                {reservationAnalytics.totalReservations}
+                <MetricValue loading={valuesLoading} size="sm">
+                  {reservationAnalytics.totalReservations}
+                </MetricValue>
               </span>
             </p>
           )}
@@ -596,7 +585,7 @@ setOccupancy(occupancyData);
     </p>
   </div>
 
-  {occupancy === null ? (
+  {!valuesLoading && occupancy === null ? (
     <p className="py-8 text-center text-sm text-gray-500">
       Occupancy data is not available.
     </p>
@@ -604,38 +593,38 @@ setOccupancy(occupancyData);
     <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg bg-blue-50 p-4">
-          <p className="text-sm font-medium text-blue-700">
-            Total Rooms
-          </p>
+          <p className="text-sm font-medium text-blue-700">Total Rooms</p>
           <p className="mt-2 text-2xl font-bold text-blue-900">
-            {occupancy.totalRooms}
+            <MetricValue loading={valuesLoading} size="md">
+              {occupancy?.totalRooms ?? 0}
+            </MetricValue>
           </p>
         </div>
 
         <div className="rounded-lg bg-teal-50 p-4">
-          <p className="text-sm font-medium text-teal-700">
-            Occupied Rooms
-          </p>
+          <p className="text-sm font-medium text-teal-700">Occupied Rooms</p>
           <p className="mt-2 text-2xl font-bold text-teal-900">
-            {occupancy.occupiedRooms}
+            <MetricValue loading={valuesLoading} size="md">
+              {occupancy?.occupiedRooms ?? 0}
+            </MetricValue>
           </p>
         </div>
 
         <div className="rounded-lg bg-gray-100 p-4">
-          <p className="text-sm font-medium text-gray-700">
-            Available Rooms
-          </p>
+          <p className="text-sm font-medium text-gray-700">Available Rooms</p>
           <p className="mt-2 text-2xl font-bold text-gray-900">
-            {occupancy.availableRooms}
+            <MetricValue loading={valuesLoading} size="md">
+              {occupancy?.availableRooms ?? 0}
+            </MetricValue>
           </p>
         </div>
 
         <div className="rounded-lg bg-indigo-50 p-4">
-          <p className="text-sm font-medium text-indigo-700">
-            Usable Rooms
-          </p>
+          <p className="text-sm font-medium text-indigo-700">Usable Rooms</p>
           <p className="mt-2 text-2xl font-bold text-indigo-900">
-            {occupancy.usableRooms}
+            <MetricValue loading={valuesLoading} size="md">
+              {occupancy?.usableRooms ?? 0}
+            </MetricValue>
           </p>
         </div>
 
@@ -644,16 +633,18 @@ setOccupancy(occupancyData);
             Maintenance Rooms
           </p>
           <p className="mt-2 text-2xl font-bold text-amber-900">
-            {occupancy.maintenanceRooms}
+            <MetricValue loading={valuesLoading} size="md">
+              {occupancy?.maintenanceRooms ?? 0}
+            </MetricValue>
           </p>
         </div>
 
         <div className="rounded-lg bg-red-50 p-4">
-          <p className="text-sm font-medium text-red-700">
-            Inactive Rooms
-          </p>
+          <p className="text-sm font-medium text-red-700">Inactive Rooms</p>
           <p className="mt-2 text-2xl font-bold text-red-900">
-            {occupancy.inactiveRooms}
+            <MetricValue loading={valuesLoading} size="md">
+              {occupancy?.inactiveRooms ?? 0}
+            </MetricValue>
           </p>
         </div>
       </div>
@@ -664,7 +655,9 @@ setOccupancy(occupancyData);
             Occupancy Rate
           </span>
           <span className="text-sm font-bold text-gray-900">
-            {occupancy.occupancyRate.toFixed(2)}%
+            <MetricValue loading={valuesLoading} size="sm">
+              {(occupancy?.occupancyRate ?? 0).toFixed(2)}%
+            </MetricValue>
           </span>
         </div>
 
@@ -674,18 +667,21 @@ setOccupancy(occupancyData);
           aria-label="Room occupancy rate"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={occupancy.occupancyRate}
+          aria-valuenow={occupancy?.occupancyRate ?? 0}
         >
           <div
             className="h-full rounded-full bg-teal-600 transition-all"
             style={{
-              width: `${occupancy.occupancyRate}%`,
+              width: `${occupancy?.occupancyRate ?? 0}%`,
             }}
           />
         </div>
 
         <p className="mt-3 text-xs text-gray-500">
-          Occupancy date: {occupancy.date}
+          Occupancy date:{" "}
+          <MetricValue loading={valuesLoading} size="sm">
+            {occupancy?.date ?? "—"}
+          </MetricValue>
         </p>
       </div>
     </>

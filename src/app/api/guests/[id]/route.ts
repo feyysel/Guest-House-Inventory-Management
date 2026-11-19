@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireApiPermission } from "@/lib/api-auth";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -58,6 +59,8 @@ export async function PATCH(
       },
     });
 
+    await invalidateCache(CACHE_KEYS.dashboard);
+
     return NextResponse.json({ guest });
   } catch (error) {
     console.error("Update guest error:", error);
@@ -107,6 +110,8 @@ export async function DELETE(
     await prisma.guest.delete({
       where: { id },
     });
+
+    await invalidateCache(CACHE_KEYS.dashboard);
 
     return NextResponse.json({
       message: "Guest deleted successfully.",

@@ -1,7 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { requireApiPermission } from "@/lib/api-auth";
+import { prisma } from "@/lib/db";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
+import { getGuesthouseSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -10,19 +12,7 @@ export async function GET() {
   if (denied) return denied;
 
   try {
-    const settings = await prisma.guestHouseSettings.findFirst();
-
-    return NextResponse.json(
-      settings ?? {
-        guesthouseName: "HavenStay Guest House",
-        email: "",
-        phone: "",
-        address: "",
-        checkInTime: "12:00",
-        checkOutTime: "11:00",
-        currency: "ETB",
-      },
-    );
+    return NextResponse.json(await getGuesthouseSettings());
   } catch (error) {
     console.error("Failed to load guesthouse settings:", error);
 
@@ -97,6 +87,8 @@ export async function PUT(request: Request) {
           data,
         })
       : await prisma.guestHouseSettings.create({ data });
+
+    await invalidateCache(CACHE_KEYS.settings, CACHE_KEYS.dashboard);
 
     return NextResponse.json(settings);
   } catch (error) {

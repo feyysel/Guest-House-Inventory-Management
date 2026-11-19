@@ -17,6 +17,9 @@ import {
   MoreHorizontal,
   CheckCircle2,
 } from "lucide-react";
+import MetricValue from "@/components/metric-value";
+import ValueSkeleton from "@/components/value-skeleton";
+import { setPendingReservations, useAppDispatch } from "@/store";
 
 type RoomStats = {
   total: number;
@@ -55,6 +58,7 @@ type DashboardData = {
     roomType: string;
     checkIn: string;
     checkOut: string;
+    openEnded: boolean;
     amount: number;
     status: string;
     createdAt: string;
@@ -63,6 +67,8 @@ type DashboardData = {
 
 type Props = {
   roomStats: RoomStats;
+  guesthouseName: string;
+  roleLabel: string;
 };
 
 function getStatusLabel(status: string) {
@@ -134,8 +140,13 @@ function getTodayLabel() {
   }).format(new Date());
 }
 
-export default function DashboardClient({ roomStats }: Props) {
+export default function DashboardClient({
+  roomStats,
+  guesthouseName: serverGuesthouseName,
+  roleLabel,
+}: Props) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
@@ -157,7 +168,13 @@ export default function DashboardClient({ roomStats }: Props) {
         }
 
         if (!cancelled) {
-          setData(result as DashboardData);
+          const dashboardData = result as DashboardData;
+          setData(dashboardData);
+          dispatch(
+            setPendingReservations(
+              dashboardData.activity?.pendingReservations ?? 0,
+            ),
+          );
           setError("");
         }
       } catch (err) {
@@ -178,12 +195,13 @@ export default function DashboardClient({ roomStats }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [dispatch]);
 
   const stats = data?.roomStats ?? roomStats;
+  const liveLoading = loading && !data;
   const currency = data?.settings.currency ?? "ETB";
   const guesthouseName =
-    data?.settings.guesthouseName ?? "HavenStay Guest House";
+    data?.settings.guesthouseName ?? serverGuesthouseName;
 
   const occupancyPercent =
     stats.total > 0
@@ -267,7 +285,7 @@ export default function DashboardClient({ roomStats }: Props) {
                 <span className="eyebrow-dot" />
                 GUESTHOUSE OVERVIEW
               </div>
-              <h1>{getGreeting()}, Administrator</h1>
+              <h1>{getGreeting()}, {roleLabel}</h1>
               <p>Here&apos;s what&apos;s happening at {guesthouseName} today.</p>
             </div>
 
@@ -285,12 +303,6 @@ export default function DashboardClient({ roomStats }: Props) {
               </button>
             </div>
           </section>
-
-          {loading && !data && (
-            <div className="mb-4 text-sm text-gray-500">
-              Loading live dashboard data...
-            </div>
-          )}
 
           <section className="stats-grid">
             {cards.map(({ label, value, detail, icon: Icon, color }) => (
@@ -312,7 +324,14 @@ export default function DashboardClient({ roomStats }: Props) {
                   </button>
                 </div>
                 <p className="stat-label">{label}</p>
-                <div className="stat-value">{value}</div>
+                <div className="stat-value">
+                  <MetricValue
+                    loading={liveLoading && label === "Today's revenue"}
+                    size="lg"
+                  >
+                    {value}
+                  </MetricValue>
+                </div>
                 <div className="stat-detail">
                   <span className="detail-dot" />
                   {detail}
@@ -346,7 +365,9 @@ export default function DashboardClient({ roomStats }: Props) {
                     <span>Reservations arriving today</span>
                   </div>
                   <div className="activity-number">
-                    {data?.activity.arrivals ?? 0}
+                    <MetricValue loading={liveLoading} size="sm">
+                      {data?.activity.arrivals ?? 0}
+                    </MetricValue>
                   </div>
                 </div>
 
@@ -359,7 +380,9 @@ export default function DashboardClient({ roomStats }: Props) {
                     <span>Reservations departing today</span>
                   </div>
                   <div className="activity-number">
-                    {data?.activity.departures ?? 0}
+                    <MetricValue loading={liveLoading} size="sm">
+                      {data?.activity.departures ?? 0}
+                    </MetricValue>
                   </div>
                 </div>
 
@@ -372,7 +395,9 @@ export default function DashboardClient({ roomStats }: Props) {
                     <span>Awaiting confirmation</span>
                   </div>
                   <div className="activity-number">
-                    {data?.activity.pendingReservations ?? 0}
+                    <MetricValue loading={liveLoading} size="sm">
+                      {data?.activity.pendingReservations ?? 0}
+                    </MetricValue>
                   </div>
                 </div>
               </div>
@@ -462,46 +487,76 @@ export default function DashboardClient({ roomStats }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredReservations.map((reservation) => (
-                    <tr key={reservation.id}>
-                      <td>
-                        <div className="guest-cell">
-                          <div className="avatar guest-avatar">
-                            {getInitials(reservation.guest)}
+                  {liveLoading ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={`reservation-skeleton-${index}`}>
+                        <td>
+                          <span className="skeleton-block table-value-skeleton" />
+                        </td>
+                        <td>
+                          <span className="skeleton-block table-value-skeleton short" />
+                        </td>
+                        <td>
+                          <span className="skeleton-block table-value-skeleton" />
+                        </td>
+                        <td>
+                          <span className="skeleton-block table-value-skeleton short" />
+                        </td>
+                        <td>
+                          <span className="skeleton-block table-value-skeleton short" />
+                        </td>
+                        <td aria-label="Loading reservation actions" />
+                      </tr>
+                    ))
+                  ) : (
+                    filteredReservations.map((reservation) => (
+                      <tr key={reservation.id}>
+                        <td>
+                          <div className="guest-cell">
+                            <div className="avatar guest-avatar">
+                              {getInitials(reservation.guest)}
+                            </div>
+                            <strong>{reservation.guest}</strong>
                           </div>
-                          <strong>{reservation.guest}</strong>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="room-number">{reservation.room}</span>
-                      </td>
-                      <td className="date-cell">
-                        {formatStay(reservation.checkIn, reservation.checkOut)}
-                      </td>
-                      <td className="amount-cell">
-                        {formatMoney(reservation.amount, currency)}
-                      </td>
-                      <td>
-                        <span
-                          className={`status-badge ${getStatusClass(reservation.status)}`}
-                        >
-                          <i />
-                          {getStatusLabel(reservation.status)}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          className="icon-button row-action"
-                          aria-label={`View reservation ${reservation.bookingCode}`}
-                          onClick={() => navigate("/reservations")}
-                        >
-                          <MoreHorizontal size={19} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <span className="room-number">
+                            {reservation.room}
+                          </span>
+                        </td>
+                        <td className="date-cell">
+                          {reservation.openEnded
+                            ? `${formatDate(reservation.checkIn)} – Open`
+                            : formatStay(
+                                reservation.checkIn,
+                                reservation.checkOut
+                              )}
+                        </td>
+                        <td className="amount-cell">
+                          {formatMoney(reservation.amount, currency)}
+                        </td>
+                        <td>
+                          <span
+                            className={`status-badge ${getStatusClass(reservation.status)}`}
+                          >
+                            <i />
+                            {getStatusLabel(reservation.status)}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="icon-button row-action"
+                            aria-label={`View reservation ${reservation.bookingCode}`}
+                            onClick={() => navigate("/reservations")}
+                          >
+                            <MoreHorizontal size={19} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
 
-                  {filteredReservations.length === 0 && (
+                  {!liveLoading && filteredReservations.length === 0 && (
                     <tr>
                       <td colSpan={6} className="empty-state">
                         {searchTerm
@@ -515,8 +570,15 @@ export default function DashboardClient({ roomStats }: Props) {
             </div>
 
             <div className="panel-footer">
-              Showing {filteredReservations.length} of{" "}
-              {data?.recentReservations.length ?? 0} recent reservations
+              Showing{" "}
+              <MetricValue loading={liveLoading} size="sm">
+                {filteredReservations.length}
+              </MetricValue>{" "}
+              of{" "}
+              <MetricValue loading={liveLoading} size="sm">
+                {data?.recentReservations.length ?? 0}
+              </MetricValue>{" "}
+              recent reservations
               <button
                 className="text-button"
                 onClick={() => navigate("/reservations")}
@@ -541,25 +603,37 @@ export default function DashboardClient({ roomStats }: Props) {
             </div>
 
             <div className="room-grid">
-              {(data?.rooms ?? []).slice(0, 8).map((room) => (
-                <div className="room-tile" key={room.id}>
-                  <div className="room-tile-top">
-                    <BedDouble size={19} />
-                    <span>Room {room.roomNumber}</span>
+              {liveLoading ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div className="room-tile" key={`room-skeleton-${index}`}>
+                    <div className="room-tile-top">
+                      <ValueSkeleton size="sm" />
+                    </div>
+                    <ValueSkeleton size="md" />
+                    <ValueSkeleton size="sm" />
                   </div>
-                  <strong>
-                    {room.name || getStatusLabel(room.type)}
-                  </strong>
-                  <span
-                    className={`room-status ${getStatusClass(room.status)}`}
-                  >
-                    <i />
-                    {getStatusLabel(room.status)}
-                  </span>
-                </div>
-              ))}
+                ))
+              ) : (
+                (data?.rooms ?? []).slice(0, 8).map((room) => (
+                  <div className="room-tile" key={room.id}>
+                    <div className="room-tile-top">
+                      <BedDouble size={19} />
+                      <span>Room {room.roomNumber}</span>
+                    </div>
+                    <strong>
+                      {room.name || getStatusLabel(room.type)}
+                    </strong>
+                    <span
+                      className={`room-status ${getStatusClass(room.status)}`}
+                    >
+                      <i />
+                      {getStatusLabel(room.status)}
+                    </span>
+                  </div>
+                ))
+              )}
 
-              {!loading && (data?.rooms.length ?? 0) === 0 && (
+              {!liveLoading && (data?.rooms.length ?? 0) === 0 && (
                 <p className="empty-state">No rooms have been added yet.</p>
               )}
             </div>

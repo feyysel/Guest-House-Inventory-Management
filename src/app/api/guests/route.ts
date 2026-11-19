@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireApiPermission } from "@/lib/api-auth";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 
 export async function POST(request: Request) {
   const denied = await requireApiPermission("guests:create");
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
         notes: notes || null,
       },
     });
+
+    await invalidateCache(CACHE_KEYS.dashboard);
 
     return NextResponse.json({ guest }, { status: 201 });
   } catch (error) {

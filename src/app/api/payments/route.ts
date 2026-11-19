@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireApiPermission } from "@/lib/api-auth";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 
 const paymentMethods = [
   "CASH",
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
         notes: notes || null,
       },
     });
+
+    await invalidateCache(
+      CACHE_KEYS.dashboard,
+      CACHE_KEYS.paymentReservations
+    );
 
     return NextResponse.json({ payment }, { status: 201 });
   } catch (error) {

@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/db";
 import GuestsTable from "@/components/guests/guests-table";
 import Link from "next/link";
+import { getGuesthouseSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function GuestsPage() {
   const guestsWithReservations = guests.filter(
     (guest) => guest._count.reservations > 0
   ).length;
+  const settings = await getGuesthouseSettings();
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-10">
@@ -40,7 +42,7 @@ export default async function GuestsPage() {
 <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
   <div>
     <p className="text-sm font-medium text-blue-600">
-      HAVENSTAY / MANAGEMENT
+      {settings.guesthouseName.toUpperCase()} / MANAGEMENT
     </p>
 
     <h1 className="mt-2 text-3xl font-bold text-gray-900">

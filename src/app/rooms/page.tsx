@@ -25,6 +25,12 @@ export default async function RoomsPage() {
 
   return (
     <RoomsManager
+      key={rooms
+        .map(
+          (room) =>
+            `${room.id}:${room.roomNumber}:${room.status}:${room.pricePerNight}`,
+        )
+        .join("|")}
       initialRooms={rooms}
       canDelete={can(user.role, "rooms:delete")}
     />

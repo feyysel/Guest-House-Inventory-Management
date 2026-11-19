@@ -1,5 +1,6 @@
 
 import { prisma } from "@/lib/db";
+import { calculateStayBilling } from "@/lib/reservation-billing";
 import ReservationsManager from "@/components/reservations/reservations-manager";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,15 @@ export default async function ReservationsPage() {
       0
     );
 
+    const billing = calculateStayBilling({
+      checkIn: reservation.checkIn,
+      checkOut: reservation.checkOut,
+      totalAmount,
+      status: reservation.status,
+      pricePerNight: Number(reservation.room.pricePerNight),
+      amountPaid,
+    });
+
     return {
       id: reservation.id,
       bookingCode: reservation.bookingCode,
@@ -56,12 +66,17 @@ export default async function ReservationsPage() {
       roomNumber: reservation.room.roomNumber,
       checkIn: reservation.checkIn.toISOString().slice(0, 10),
       checkOut: reservation.checkOut.toISOString().slice(0, 10),
+      openEnded: reservation.openEnded,
       adults: reservation.adults,
       children: reservation.children,
       status: reservation.status,
-      totalAmount,
+      totalAmount: billing.currentTotal,
       amountPaid,
-      balance: Math.max(0, totalAmount - amountPaid),
+      balance: billing.balance,
+      currentNights: billing.chargedNights,
+      currentTotal: billing.currentTotal,
+      currentBalance: billing.balance,
+      extraNights: billing.extraNights,
     };
   });
 
@@ -83,6 +98,15 @@ export default async function ReservationsPage() {
 
   return (
     <ReservationsManager
+      key={[
+        reservations
+          .map(
+            (reservation) =>
+              `${reservation.id}:${reservation.status}:${reservation.currentTotal}:${reservation.amountPaid}`,
+          )
+          .join("|"),
+        rooms.map((room) => `${room.id}:${room.status}`).join("|"),
+      ].join("#")}
       initialReservations={reservations}
       rooms={rooms}
     />

@@ -79,7 +79,7 @@ export default function EditGuestForm({ guest }: { guest: Guest }) {
           Edit Guest Information
         </h2>
         <p className="mt-1 text-sm text-gray-500">
-          Update the guest's details below.
+          Update the guest&apos;s details below.
         </p>
       </div>
 

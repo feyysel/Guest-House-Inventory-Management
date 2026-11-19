@@ -15,6 +15,7 @@ import {
   roleDescriptions,
   type Permission,
 } from "@/lib/permissions";
+import { useAppSelector } from "@/store";
 
 type StaffUser = {
   id: string;
@@ -43,6 +44,9 @@ export default function UsersManager({
   permissionLabels,
 }: Props) {
   const router = useRouter();
+  const guesthouseName = useAppSelector(
+    (state) => state.ui.guesthouseName
+  );
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -91,7 +95,7 @@ export default function UsersManager({
       <div className="mx-auto max-w-7xl space-y-6">
         <header>
           <p className="text-sm font-medium text-teal-700">
-            HAVENSTAY / ADMINISTRATION
+            {guesthouseName.toUpperCase()} / ADMINISTRATION
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Users</h1>
           <p className="mt-2 text-sm text-slate-500">

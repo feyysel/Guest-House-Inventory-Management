@@ -45,6 +45,7 @@ export type ReservationMinAggregateOutputType = {
   roomId: string | null
   checkIn: Date | null
   checkOut: Date | null
+  openEnded: boolean | null
   adults: number | null
   children: number | null
   status: $Enums.ReservationStatus | null
@@ -61,6 +62,7 @@ export type ReservationMaxAggregateOutputType = {
   roomId: string | null
   checkIn: Date | null
   checkOut: Date | null
+  openEnded: boolean | null
   adults: number | null
   children: number | null
   status: $Enums.ReservationStatus | null
@@ -77,6 +79,7 @@ export type ReservationCountAggregateOutputType = {
   roomId: number
   checkIn: number
   checkOut: number
+  openEnded: number
   adults: number
   children: number
   status: number
@@ -107,6 +110,7 @@ export type ReservationMinAggregateInputType = {
   roomId?: true
   checkIn?: true
   checkOut?: true
+  openEnded?: true
   adults?: true
   children?: true
   status?: true
@@ -123,6 +127,7 @@ export type ReservationMaxAggregateInputType = {
   roomId?: true
   checkIn?: true
   checkOut?: true
+  openEnded?: true
   adults?: true
   children?: true
   status?: true
@@ -139,6 +144,7 @@ export type ReservationCountAggregateInputType = {
   roomId?: true
   checkIn?: true
   checkOut?: true
+  openEnded?: true
   adults?: true
   children?: true
   status?: true
@@ -242,6 +248,7 @@ export type ReservationGroupByOutputType = {
   roomId: string
   checkIn: Date
   checkOut: Date
+  openEnded: boolean
   adults: number
   children: number
   status: $Enums.ReservationStatus
@@ -281,6 +288,7 @@ export type ReservationWhereInput = {
   roomId?: Prisma.StringFilter<"Reservation"> | string
   checkIn?: Prisma.DateTimeFilter<"Reservation"> | Date | string
   checkOut?: Prisma.DateTimeFilter<"Reservation"> | Date | string
+  openEnded?: Prisma.BoolFilter<"Reservation"> | boolean
   adults?: Prisma.IntFilter<"Reservation"> | number
   children?: Prisma.IntFilter<"Reservation"> | number
   status?: Prisma.EnumReservationStatusFilter<"Reservation"> | $Enums.ReservationStatus
@@ -300,6 +308,7 @@ export type ReservationOrderByWithRelationInput = {
   roomId?: Prisma.SortOrder
   checkIn?: Prisma.SortOrder
   checkOut?: Prisma.SortOrder
+  openEnded?: Prisma.SortOrder
   adults?: Prisma.SortOrder
   children?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -322,6 +331,7 @@ export type ReservationWhereUniqueInput = Prisma.AtLeast<{
   roomId?: Prisma.StringFilter<"Reservation"> | string
   checkIn?: Prisma.DateTimeFilter<"Reservation"> | Date | string
   checkOut?: Prisma.DateTimeFilter<"Reservation"> | Date | string
+  openEnded?: Prisma.BoolFilter<"Reservation"> | boolean
   adults?: Prisma.IntFilter<"Reservation"> | number
   children?: Prisma.IntFilter<"Reservation"> | number
   status?: Prisma.EnumReservationStatusFilter<"Reservation"> | $Enums.ReservationStatus
@@ -341,6 +351,7 @@ export type ReservationOrderByWithAggregationInput = {
   roomId?: Prisma.SortOrder
   checkIn?: Prisma.SortOrder
   checkOut?: Prisma.SortOrder
+  openEnded?: Prisma.SortOrder
   adults?: Prisma.SortOrder
   children?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -365,6 +376,7 @@ export type ReservationScalarWhereWithAggregatesInput = {
   roomId?: Prisma.StringWithAggregatesFilter<"Reservation"> | string
   checkIn?: Prisma.DateTimeWithAggregatesFilter<"Reservation"> | Date | string
   checkOut?: Prisma.DateTimeWithAggregatesFilter<"Reservation"> | Date | string
+  openEnded?: Prisma.BoolWithAggregatesFilter<"Reservation"> | boolean
   adults?: Prisma.IntWithAggregatesFilter<"Reservation"> | number
   children?: Prisma.IntWithAggregatesFilter<"Reservation"> | number
   status?: Prisma.EnumReservationStatusWithAggregatesFilter<"Reservation"> | $Enums.ReservationStatus
@@ -379,6 +391,7 @@ export type ReservationCreateInput = {
   bookingCode?: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -398,6 +411,7 @@ export type ReservationUncheckedCreateInput = {
   roomId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -413,6 +427,7 @@ export type ReservationUpdateInput = {
   bookingCode?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -432,6 +447,7 @@ export type ReservationUncheckedUpdateInput = {
   roomId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -449,6 +465,7 @@ export type ReservationCreateManyInput = {
   roomId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -463,6 +480,7 @@ export type ReservationUpdateManyMutationInput = {
   bookingCode?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -479,6 +497,7 @@ export type ReservationUncheckedUpdateManyInput = {
   roomId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -505,6 +524,7 @@ export type ReservationCountOrderByAggregateInput = {
   roomId?: Prisma.SortOrder
   checkIn?: Prisma.SortOrder
   checkOut?: Prisma.SortOrder
+  openEnded?: Prisma.SortOrder
   adults?: Prisma.SortOrder
   children?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -527,6 +547,7 @@ export type ReservationMaxOrderByAggregateInput = {
   roomId?: Prisma.SortOrder
   checkIn?: Prisma.SortOrder
   checkOut?: Prisma.SortOrder
+  openEnded?: Prisma.SortOrder
   adults?: Prisma.SortOrder
   children?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -543,6 +564,7 @@ export type ReservationMinOrderByAggregateInput = {
   roomId?: Prisma.SortOrder
   checkIn?: Prisma.SortOrder
   checkOut?: Prisma.SortOrder
+  openEnded?: Prisma.SortOrder
   adults?: Prisma.SortOrder
   children?: Prisma.SortOrder
   status?: Prisma.SortOrder
@@ -670,6 +692,7 @@ export type ReservationCreateWithoutRoomInput = {
   bookingCode?: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -687,6 +710,7 @@ export type ReservationUncheckedCreateWithoutRoomInput = {
   guestId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -733,6 +757,7 @@ export type ReservationScalarWhereInput = {
   roomId?: Prisma.StringFilter<"Reservation"> | string
   checkIn?: Prisma.DateTimeFilter<"Reservation"> | Date | string
   checkOut?: Prisma.DateTimeFilter<"Reservation"> | Date | string
+  openEnded?: Prisma.BoolFilter<"Reservation"> | boolean
   adults?: Prisma.IntFilter<"Reservation"> | number
   children?: Prisma.IntFilter<"Reservation"> | number
   status?: Prisma.EnumReservationStatusFilter<"Reservation"> | $Enums.ReservationStatus
@@ -747,6 +772,7 @@ export type ReservationCreateWithoutGuestInput = {
   bookingCode?: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -764,6 +790,7 @@ export type ReservationUncheckedCreateWithoutGuestInput = {
   roomId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -805,6 +832,7 @@ export type ReservationCreateWithoutPaymentsInput = {
   bookingCode?: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -823,6 +851,7 @@ export type ReservationUncheckedCreateWithoutPaymentsInput = {
   roomId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -853,6 +882,7 @@ export type ReservationUpdateWithoutPaymentsInput = {
   bookingCode?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -871,6 +901,7 @@ export type ReservationUncheckedUpdateWithoutPaymentsInput = {
   roomId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -886,6 +917,7 @@ export type ReservationCreateManyRoomInput = {
   guestId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -900,6 +932,7 @@ export type ReservationUpdateWithoutRoomInput = {
   bookingCode?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -917,6 +950,7 @@ export type ReservationUncheckedUpdateWithoutRoomInput = {
   guestId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -933,6 +967,7 @@ export type ReservationUncheckedUpdateManyWithoutRoomInput = {
   guestId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -948,6 +983,7 @@ export type ReservationCreateManyGuestInput = {
   roomId: string
   checkIn: Date | string
   checkOut: Date | string
+  openEnded?: boolean
   adults?: number
   children?: number
   status?: $Enums.ReservationStatus
@@ -962,6 +998,7 @@ export type ReservationUpdateWithoutGuestInput = {
   bookingCode?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -979,6 +1016,7 @@ export type ReservationUncheckedUpdateWithoutGuestInput = {
   roomId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -995,6 +1033,7 @@ export type ReservationUncheckedUpdateManyWithoutGuestInput = {
   roomId?: Prisma.StringFieldUpdateOperationsInput | string
   checkIn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   checkOut?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  openEnded?: Prisma.BoolFieldUpdateOperationsInput | boolean
   adults?: Prisma.IntFieldUpdateOperationsInput | number
   children?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumReservationStatusFieldUpdateOperationsInput | $Enums.ReservationStatus
@@ -1042,6 +1081,7 @@ export type ReservationSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   roomId?: boolean
   checkIn?: boolean
   checkOut?: boolean
+  openEnded?: boolean
   adults?: boolean
   children?: boolean
   status?: boolean
@@ -1062,6 +1102,7 @@ export type ReservationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   roomId?: boolean
   checkIn?: boolean
   checkOut?: boolean
+  openEnded?: boolean
   adults?: boolean
   children?: boolean
   status?: boolean
@@ -1080,6 +1121,7 @@ export type ReservationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   roomId?: boolean
   checkIn?: boolean
   checkOut?: boolean
+  openEnded?: boolean
   adults?: boolean
   children?: boolean
   status?: boolean
@@ -1098,6 +1140,7 @@ export type ReservationSelectScalar = {
   roomId?: boolean
   checkIn?: boolean
   checkOut?: boolean
+  openEnded?: boolean
   adults?: boolean
   children?: boolean
   status?: boolean
@@ -1107,7 +1150,7 @@ export type ReservationSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ReservationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "guestId" | "roomId" | "checkIn" | "checkOut" | "adults" | "children" | "status" | "totalAmount" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["reservation"]>
+export type ReservationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "bookingCode" | "guestId" | "roomId" | "checkIn" | "checkOut" | "openEnded" | "adults" | "children" | "status" | "totalAmount" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["reservation"]>
 export type ReservationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   guest?: boolean | Prisma.GuestDefaultArgs<ExtArgs>
   room?: boolean | Prisma.RoomDefaultArgs<ExtArgs>
@@ -1137,6 +1180,7 @@ export type $ReservationPayload<ExtArgs extends runtime.Types.Extensions.Interna
     roomId: string
     checkIn: Date
     checkOut: Date
+    openEnded: boolean
     adults: number
     children: number
     status: $Enums.ReservationStatus
@@ -1576,6 +1620,7 @@ export interface ReservationFieldRefs {
   readonly roomId: Prisma.FieldRef<"Reservation", 'String'>
   readonly checkIn: Prisma.FieldRef<"Reservation", 'DateTime'>
   readonly checkOut: Prisma.FieldRef<"Reservation", 'DateTime'>
+  readonly openEnded: Prisma.FieldRef<"Reservation", 'Boolean'>
   readonly adults: Prisma.FieldRef<"Reservation", 'Int'>
   readonly children: Prisma.FieldRef<"Reservation", 'Int'>
   readonly status: Prisma.FieldRef<"Reservation", 'ReservationStatus'>

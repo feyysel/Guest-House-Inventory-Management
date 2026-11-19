@@ -101,6 +101,7 @@ model Reservation {
   roomId       String
   checkIn      DateTime
   checkOut     DateTime
+  openEnded    Boolean           @default(false)
   adults       Int               @default(1)
   children     Int               @default(0)
   status       ReservationStatus @default(PENDING)

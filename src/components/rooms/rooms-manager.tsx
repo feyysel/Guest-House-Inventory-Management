@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createRoom,
@@ -9,6 +9,7 @@ import {
   deleteRoom,
   type RoomInput,
 } from "@/app/rooms/actions";
+import { useAppSelector } from "@/store";
 
 type Room = {
   id: string;
@@ -54,10 +55,10 @@ export default function RoomsManager({
   canDelete: boolean;
 }) {
   const router = useRouter();
+  const guesthouseName = useAppSelector(
+    (state) => state.ui.guesthouseName
+  );
   const [rooms, setRooms] = useState(initialRooms);
-  useEffect(() => {
-  setRooms(initialRooms);
-}, [initialRooms]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("ALL");
   const [form, setForm] = useState<RoomInput>(emptyForm);
@@ -160,7 +161,9 @@ export default function RoomsManager({
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-blue-600">HAVENSTAY / MANAGEMENT</p>
+            <p className="text-sm font-medium text-blue-600">
+              {guesthouseName.toUpperCase()} / MANAGEMENT
+            </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Rooms</h1>
             <p className="mt-2 text-sm text-gray-500">
               Manage room details, prices, and availability.

@@ -4,6 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma, RoomStatus, RoomType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 import { authorize } from "@/lib/session";
 
 export type RoomInput = {
@@ -70,6 +71,7 @@ export async function createRoom(input: RoomInput) {
 
     revalidatePath("/rooms");
     revalidatePath("/");
+    await invalidateCache(CACHE_KEYS.dashboard);
 
     return { success: true };
   } catch (error) {
@@ -117,6 +119,7 @@ export async function updateRoom(id: string, input: RoomInput) {
 
     revalidatePath("/rooms");
     revalidatePath("/");
+    await invalidateCache(CACHE_KEYS.dashboard);
 
     return { success: true };
   } catch (error) {
@@ -150,6 +153,7 @@ export async function deleteRoom(id: string) {
 
     revalidatePath("/rooms");
     revalidatePath("/");
+    await invalidateCache(CACHE_KEYS.dashboard);
 
     return { success: true };
   } catch (error) {

@@ -18,6 +18,9 @@ type Reservation = {
   totalAmount: number;
   amountPaid: number;
   balance: number;
+  openEnded: boolean;
+  currentNights: number;
+  extraNights: number;
 };
 
 function formatETB(amount: number) {
@@ -167,7 +170,14 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
           <select
             required
             value={reservationId}
-            onChange={(event) => setReservationId(event.target.value)}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              setReservationId(nextId);
+              const next = reservations.find(
+                (reservation) => reservation.id === nextId
+              );
+              if (next) setAmount(next.balance > 0 ? next.balance.toFixed(2) : "");
+            }}
             className="w-full rounded-lg border px-3 py-2"
           >
             <option value="">Select a reservation</option>
@@ -191,6 +201,14 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
               <span className="font-semibold">
                 {formatETB(selectedReservation.balance)}
               </span>
+              {selectedReservation.extraNights > 0 && (
+                <span className="mt-1 block font-medium text-amber-700">
+                  Includes {selectedReservation.extraNights} extra night
+                  {selectedReservation.extraNights === 1 ? "" : "s"} at the
+                  nightly rate
+                  {selectedReservation.openEnded ? " (open stay)" : ""}.
+                </span>
+              )}
             </p>
           )}
         </div>

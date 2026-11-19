@@ -2,6 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAppDispatch } from "@/store";
+import { setGuesthouseName } from "@/store";
 import {
   Building2,
   Save,
@@ -10,6 +12,7 @@ import {
   Banknote,
   CheckCircle2,
 } from "lucide-react";
+import { DEFAULT_GUESTHOUSE_NAME } from "@/lib/branding";
 
 type SettingsForm = {
   guesthouseName: string;
@@ -22,7 +25,7 @@ type SettingsForm = {
 };
 
 const defaults: SettingsForm = {
-  guesthouseName: "HavenStay Guest House",
+  guesthouseName: DEFAULT_GUESTHOUSE_NAME,
   email: "",
   phone: "",
   address: "",
@@ -32,6 +35,7 @@ const defaults: SettingsForm = {
 };
 
 export default function SettingsPage() {
+  const dispatch = useAppDispatch();
   const [form, setForm] = useState<SettingsForm>(defaults);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,6 +61,8 @@ export default function SettingsPage() {
           checkOutTime: data.checkOutTime ?? defaults.checkOutTime,
           currency: data.currency ?? defaults.currency,
         });
+
+        dispatch(setGuesthouseName(data.guesthouseName ?? defaults.guesthouseName));
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load settings.",
@@ -67,7 +73,7 @@ export default function SettingsPage() {
     }
 
     loadSettings();
-  }, []);
+  }, [dispatch]);
 
   function updateField<K extends keyof SettingsForm>(
     field: K,
@@ -104,10 +110,11 @@ export default function SettingsPage() {
         address: data.address ?? "",
         checkInTime: data.checkInTime ?? defaults.checkInTime,
         checkOutTime: data.checkOutTime ?? defaults.checkOutTime,
-        currency: data.currency ?? defaults.currency,
-      });
+          currency: data.currency ?? defaults.currency,
+        });
 
-      setSaved(true);
+        dispatch(setGuesthouseName(data.guesthouseName ?? defaults.guesthouseName));
+        setSaved(true);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to save settings.",

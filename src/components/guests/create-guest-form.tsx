@@ -70,7 +70,7 @@ export default function CreateGuestForm() {
           Register New Guest
         </h2>
         <p className="mt-1 text-sm text-gray-500">
-          Enter the guest's contact and personal details.
+          Enter the guest&apos;s contact and personal details.
         </p>
       </div>
 

@@ -1,22 +1,24 @@
 
 import { getRooms, getRoomStats } from "@/lib/rooms";
 import { requirePermission } from "@/lib/session";
+import { getGuesthouseSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function RoomsTestPage() {
   await requirePermission("rooms:view");
 
-  const [rooms, stats] = await Promise.all([
+  const [rooms, stats, settings] = await Promise.all([
     getRooms(),
     getRoomStats(),
+    getGuesthouseSettings(),
   ]);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 text-gray-900">
       <div className="mx-auto max-w-5xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">HavenStay Rooms</h1>
+          <h1 className="text-3xl font-bold">{settings.guesthouseName} Rooms</h1>
           <p className="mt-2 text-gray-600">
             Live room information from PostgreSQL
           </p>

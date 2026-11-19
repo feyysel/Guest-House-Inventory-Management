@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   Building2,
@@ -25,7 +25,8 @@ import {
   roleLabels,
   settingsNavItem,
 } from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+import ThemeToggle from "@/components/theme-toggle";
+import { setSidebarOpen, useAppDispatch, useAppSelector } from "@/store";
 
 const iconByHref: Record<string, typeof LayoutDashboard> = {
   "/": LayoutDashboard,
@@ -38,67 +39,95 @@ const iconByHref: Record<string, typeof LayoutDashboard> = {
   "/settings": Settings,
 };
 
-type ShellData = {
-  settings?: {
-    guesthouseName?: string;
-  };
-  activity?: {
-    pendingReservations?: number;
-  };
-};
-
 export default function AppShell({
   children,
-  user,
 }: {
   children: React.ReactNode;
-  user: SessionUser | null;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
+  const dispatch = useAppDispatch();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [guesthouseName, setGuesthouseName] = useState(
-    "HavenStay Guest House",
+  const user = useAppSelector((state) => state.auth.user);
+  const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
+  const guesthouseName = useAppSelector(
+    (state) => state.ui.guesthouseName
   );
-  const [pendingReservations, setPendingReservations] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadShellData() {
-      try {
-        const response = await fetch("/api/dashboard", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) return;
-
-        const result = (await response.json()) as ShellData;
-
-        if (cancelled) return;
-
-        if (result.settings?.guesthouseName) {
-          setGuesthouseName(result.settings.guesthouseName);
-        }
-
-        setPendingReservations(result.activity?.pendingReservations ?? 0);
-      } catch {
-        // Keep the default shell values when live data is unavailable.
-      }
-    }
-
-    if (user) {
-      loadShellData();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  const pendingReservations = useAppSelector(
+    (state) => state.ui.pendingReservations
+  );
 
   if (!user) {
-    return <>{children}</>;
+    if (pathname === "/login" || pathname === "/unauthorized") {
+      return <>{children}</>;
+    }
+
+    return (
+      <div className="app-shell">
+        {sidebarOpen && (
+          <button
+            className="mobile-overlay"
+            aria-label="Close navigation"
+            onClick={() => dispatch(setSidebarOpen(false))}
+          />
+        )}
+
+        <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
+          <div className="brand">
+            <div className="brand-icon">
+              <Building2 size={23} />
+            </div>
+            <div className="brand-copy">
+              <strong>{guesthouseName}</strong>
+              <span className="skeleton-block skeleton-brand-role" />
+            </div>
+            <button
+              className="icon-button sidebar-close"
+              aria-label="Close menu"
+              onClick={() => dispatch(setSidebarOpen(false))}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="nav-caption">WORKSPACE</div>
+
+          <div className="skeleton-nav">
+            {Array.from({ length: 7 }).map((_, index) => (
+              <div
+                key={`nav-skeleton-${index}`}
+                className="skeleton-block skeleton-nav-item"
+              />
+            ))}
+          </div>
+        </aside>
+
+        <main className="main-area">
+          <header className="topbar">
+            <button
+              className="icon-button mobile-menu"
+              aria-label="Open navigation"
+              onClick={() => dispatch(setSidebarOpen(true))}
+            >
+              <Menu size={22} />
+            </button>
+
+            <div className="breadcrumb">
+              <span>Workspace</span>
+              <span className="breadcrumb-divider">/</span>
+              <span className="skeleton-block skeleton-crumb" />
+            </div>
+
+            <div className="topbar-actions">
+              <span className="skeleton-block skeleton-action" />
+              <ThemeToggle />
+              <span className="skeleton-block skeleton-avatar" />
+            </div>
+          </header>
+
+          {children}
+        </main>
+      </div>
+    );
   }
 
   const visibleNavigation = navigation.filter((item) =>
@@ -120,9 +149,8 @@ export default function AppShell({
           : pathname === item.href || pathname.startsWith(`${item.href}/`),
     )?.label ?? "Dashboard";
 
-  function navigate(href: string) {
-    setSidebarOpen(false);
-    router.push(href);
+  function closeSidebar() {
+    dispatch(setSidebarOpen(false));
   }
 
   return (
@@ -131,7 +159,7 @@ export default function AppShell({
         <button
           className="mobile-overlay"
           aria-label="Close navigation"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => dispatch(setSidebarOpen(false))}
         />
       )}
 
@@ -141,13 +169,13 @@ export default function AppShell({
             <Building2 size={23} />
           </div>
           <div className="brand-copy">
-            <strong>HavenStay</strong>
-            <span>GUESTHOUSE MANAGER</span>
+            <strong>{guesthouseName}</strong>
+            <span>{roleLabels[user.role].toUpperCase()}</span>
           </div>
           <button
             className="icon-button sidebar-close"
             aria-label="Close menu"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => dispatch(setSidebarOpen(false))}
           >
             <X size={20} />
           </button>
@@ -160,17 +188,19 @@ export default function AppShell({
             const Icon = iconByHref[href];
 
             return (
-              <button
+              <Link
                 key={label}
+                href={href}
+                prefetch
                 className={`nav-item ${activePage === label ? "active" : ""}`}
-                onClick={() => navigate(href)}
+                onNavigate={closeSidebar}
               >
                 <Icon size={19} />
                 <span>{label}</span>
                 {label === "Reservations" && pendingReservations > 0 && (
                   <span className="nav-count">{pendingReservations}</span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -179,13 +209,15 @@ export default function AppShell({
           <>
             <div className="nav-caption management-caption">PREFERENCES</div>
 
-            <button
+            <Link
+              href={settingsNavItem.href}
+              prefetch
               className={`nav-item ${activePage === "Settings" ? "active" : ""}`}
-              onClick={() => navigate(settingsNavItem.href)}
+              onNavigate={closeSidebar}
             >
               <Settings size={19} />
               <span>Settings</span>
-            </button>
+            </Link>
           </>
         )}
 
@@ -223,7 +255,7 @@ export default function AppShell({
           <button
             className="icon-button mobile-menu"
             aria-label="Open navigation"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => dispatch(setSidebarOpen(true))}
           >
             <Menu size={22} />
           </button>
@@ -236,32 +268,38 @@ export default function AppShell({
 
           <div className="topbar-actions">
             {canViewSettings ? (
-              <button
+              <Link
+                href={settingsNavItem.href}
+                prefetch
                 className="property-selector"
-                onClick={() => navigate(settingsNavItem.href)}
                 title="Manage guesthouse settings"
               >
                 <Building2 size={17} />
                 <span>{guesthouseName}</span>
                 <ChevronDown size={15} />
-              </button>
+              </Link>
             ) : (
               <div className="property-selector">
                 <Building2 size={17} />
                 <span>{guesthouseName}</span>
               </div>
             )}
-            <button
+            <ThemeToggle />
+            <Link
+              href="/reservations"
+              prefetch
               className="icon-button notification-button"
               aria-label="View pending reservations"
-              onClick={() => navigate("/reservations")}
               title="Pending reservations"
             >
               <Bell size={19} />
               {pendingReservations > 0 && (
                 <span className="notification-dot" />
               )}
-            </button>
+            </Link>
+            <span className="topbar-role">
+              {roleLabels[user.role].toUpperCase()}
+            </span>
             <div className="avatar top-avatar" title={roleLabels[user.role]}>
               {initials}
             </div>

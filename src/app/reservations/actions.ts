@@ -9,6 +9,8 @@ import {
   ReservationStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { calculateStayBilling } from "@/lib/reservation-billing";
+import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 import { authorize } from "@/lib/session";
 
 export type ReservationInput = {
@@ -18,7 +20,8 @@ export type ReservationInput = {
   email?: string;
   roomId: string;
   checkIn: string;
-  checkOut: string;
+  checkOut?: string;
+  openEnded?: boolean;
   adults: number;
   children: number;
   notes?: string;
@@ -48,6 +51,19 @@ function parseDate(value: string): Date | null {
   }
 
   return date;
+}
+
+function todayDate() {
+  const now = new Date();
+  const value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+  return parseDate(value) ?? new Date(0);
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date.getTime());
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
 }
 
 export async function createReservation(
@@ -145,21 +161,34 @@ export async function createReservation(
     }
 
     const checkIn = parseDate(input.checkIn);
-    const checkOut = parseDate(input.checkOut);
+    const openEnded = input.openEnded === true;
 
-    if (!checkIn || !checkOut) {
+    if (!checkIn) {
       return {
         success: false,
-        message: "Enter valid check-in and check-out dates.",
+        message: "Enter a valid check-in date.",
       };
     }
 
-    if (checkOut <= checkIn) {
+    const requestedCheckOut = input.checkOut?.trim()
+      ? parseDate(input.checkOut)
+      : null;
+
+    if (!openEnded && !requestedCheckOut) {
+      return {
+        success: false,
+        message: "Enter a valid check-out date or choose an open stay.",
+      };
+    }
+
+    if (requestedCheckOut && requestedCheckOut <= checkIn) {
       return {
         success: false,
         message: "Check-out must be after check-in.",
       };
     }
+
+    const checkOut = openEnded ? addDays(checkIn, 1) : requestedCheckOut!;
 
     const nights =
       (checkOut.getTime() - checkIn.getTime()) /
@@ -215,11 +244,13 @@ export async function createReservation(
       });
 
       const totalAmount = room.pricePerNight.mul(nights);
-      const minimumDeposit = totalAmount.div(2);
+      const minimumDeposit = openEnded
+        ? totalAmount
+        : totalAmount.div(2);
 
       if (new Prisma.Decimal(paymentAmount).lt(minimumDeposit)) {
         throw new Error(
-          `DEPOSIT_BELOW_MINIMUM:${minimumDeposit.toFixed(2)}`
+          `DEPOSIT_BELOW_MINIMUM:${minimumDeposit.toFixed(2)}:${openEnded ? "FULL" : "HALF"}`
         );
       }
 
@@ -229,6 +260,7 @@ export async function createReservation(
           roomId: room.id,
           checkIn,
           checkOut,
+          openEnded,
           adults: input.adults,
           children: input.children,
           status: ReservationStatus.PENDING,
@@ -255,10 +287,16 @@ export async function createReservation(
     revalidatePath("/reservations");
     revalidatePath("/");
     revalidatePath("/rooms");
+    await invalidateCache(
+      CACHE_KEYS.dashboard,
+      CACHE_KEYS.paymentReservations
+    );
 
     return {
       success: true,
-      message: `Reservation created successfully. Total: ETB ${reservation.totalAmount.toFixed(2)}. Deposit paid: ETB ${paymentAmount.toFixed(2)}.`,
+      message: openEnded
+        ? `Open stay created. First night paid in full: ETB ${paymentAmount.toFixed(2)}. Extra days are charged nightly at checkout.`
+        : `Reservation created successfully. Total: ETB ${reservation.totalAmount.toFixed(2)}. Deposit paid: ETB ${paymentAmount.toFixed(2)}.`,
       bookingCode: reservation.bookingCode,
     };
   } catch (error) {
@@ -289,10 +327,13 @@ export async function createReservation(
       }
 
       if (error.message.startsWith("DEPOSIT_BELOW_MINIMUM:")) {
-        const minimum = error.message.split(":")[1];
+        const [, minimum, kind] = error.message.split(":");
         return {
           success: false,
-          message: `A deposit of at least ETB ${minimum} (50% of the room total) is required to reserve.`,
+          message:
+            kind === "FULL"
+              ? `An open stay requires the full first-night payment of ETB ${minimum}.`
+              : `A deposit of at least ETB ${minimum} (50% of the room total) is required to reserve.`,
         };
       }
     }
@@ -357,7 +398,12 @@ export async function updateReservationStatus(
           id: true,
           roomId: true,
           status: true,
+          checkIn: true,
+          checkOut: true,
           totalAmount: true,
+          room: {
+            select: { pricePerNight: true },
+          },
         },
       });
 
@@ -368,6 +414,11 @@ export async function updateReservationStatus(
       if (!allowedTransitions[reservation.status]?.includes(nextStatus)) {
         throw new Error("INVALID_STATUS_TRANSITION");
       }
+
+      let extraNights = 0;
+      let extraCharge = 0;
+      let finalTotal = reservation.totalAmount;
+      let finalCheckOut = reservation.checkOut;
 
       if (
         nextStatus === ReservationStatus.CHECKED_IN ||
@@ -383,9 +434,41 @@ export async function updateReservationStatus(
 
         const amountPaid = paymentTotal._sum.amount ?? new Prisma.Decimal(0);
 
-        if (amountPaid.lt(reservation.totalAmount)) {
+        if (
+          nextStatus === ReservationStatus.CHECKED_IN &&
+          amountPaid.lt(reservation.totalAmount)
+        ) {
           const remaining = reservation.totalAmount.minus(amountPaid);
-          throw new Error(`FULL_PAYMENT_REQUIRED:${remaining.toFixed(2)}`);
+          throw new Error(`FULL_PAYMENT_REQUIRED:${remaining.toFixed(2)}:0`);
+        }
+
+        if (nextStatus === ReservationStatus.CHECKED_OUT) {
+          const billing = calculateStayBilling(
+            {
+              checkIn: reservation.checkIn,
+              checkOut: reservation.checkOut,
+              totalAmount: Number(reservation.totalAmount),
+              status: reservation.status,
+              pricePerNight: Number(reservation.room.pricePerNight),
+              amountPaid: Number(amountPaid),
+            },
+            todayDate()
+          );
+
+          extraNights = billing.extraNights;
+          extraCharge = Math.max(
+            0,
+            billing.currentTotal - Number(reservation.totalAmount)
+          );
+          finalTotal = new Prisma.Decimal(billing.currentTotal.toFixed(2));
+          finalCheckOut =
+            extraNights > 0 ? todayDate() : reservation.checkOut;
+
+          if (billing.balance > 0) {
+            throw new Error(
+              `FULL_PAYMENT_REQUIRED:${billing.balance.toFixed(2)}:${extraNights}`
+            );
+          }
         }
       }
 
@@ -402,7 +485,16 @@ export async function updateReservationStatus(
 
       await tx.reservation.update({
         where: { id: reservation.id },
-        data: { status: nextStatus },
+        data: {
+          status: nextStatus,
+          ...(nextStatus === ReservationStatus.CHECKED_OUT &&
+          extraNights > 0
+            ? {
+                checkOut: finalCheckOut,
+                totalAmount: finalTotal,
+              }
+            : {}),
+        },
       });
 
       if (nextStatus === ReservationStatus.CHECKED_IN) {
@@ -454,18 +546,28 @@ export async function updateReservationStatus(
         }
       }
 
-      return reservation;
+      return { extraNights, extraCharge };
     });
 
     revalidatePath("/reservations");
     revalidatePath("/rooms");
     revalidatePath("/");
+    await invalidateCache(
+      CACHE_KEYS.dashboard,
+      CACHE_KEYS.paymentReservations
+    );
+
+    const extraMessage =
+      nextStatus === ReservationStatus.CHECKED_OUT &&
+      result.extraNights > 0
+        ? ` Extra ${result.extraNights} night${result.extraNights === 1 ? "" : "s"} charged: ETB ${result.extraCharge.toFixed(2)}.`
+        : "";
 
     return {
       success: true,
       message: `Reservation status updated to ${nextStatus
         .replaceAll("_", " ")
-        .toLowerCase()}.`,
+        .toLowerCase()}.${extraMessage}`,
     };
   } catch (error) {
     console.error("Update reservation status failed:", error);
@@ -494,10 +596,13 @@ export async function updateReservationStatus(
       }
 
       if (error.message.startsWith("FULL_PAYMENT_REQUIRED:")) {
-        const remaining = error.message.split(":")[1];
+        const [, remaining, extra] = error.message.split(":");
         return {
           success: false,
-          message: `The full room price must be paid before check-in or check-out. Remaining balance: ETB ${remaining}.`,
+          message:
+            Number(extra) > 0
+              ? `Extra ${extra} night${extra === "1" ? "" : "s"} must be paid before check-out. Remaining balance: ETB ${remaining}.`
+              : `The full room price must be paid before check-in or check-out. Remaining balance: ETB ${remaining}.`,
         };
       }
     }

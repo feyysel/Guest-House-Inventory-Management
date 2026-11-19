@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import EditGuestForm from "@/components/guests/edit-guest-form";
+import { getGuesthouseSettings } from "@/lib/settings";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -11,9 +12,12 @@ type Props = {
 export default async function EditGuestPage({ params }: Props) {
   const { id } = await params;
 
-  const guest = await prisma.guest.findUnique({
-    where: { id },
-  });
+  const [guest, settings] = await Promise.all([
+    prisma.guest.findUnique({
+      where: { id },
+    }),
+    getGuesthouseSettings(),
+  ]);
 
   if (!guest) {
     notFound();
@@ -31,7 +35,7 @@ export default async function EditGuestPage({ params }: Props) {
           </Link>
 
           <p className="mt-5 text-sm font-medium text-blue-600">
-            HAVENSTAY / MANAGEMENT
+            {settings.guesthouseName.toUpperCase()} / MANAGEMENT
           </p>
 
           <h1 className="mt-2 text-3xl font-bold text-gray-900">

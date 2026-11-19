@@ -2,9 +2,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { calculateStayBilling } from "@/lib/reservation-billing";
 import DeleteGuestButton from "@/components/guests/delete-guest-button";
 import { can } from "@/lib/permissions";
 import { requirePermission } from "@/lib/session";
+import { getGuesthouseSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,7 @@ type Props = {
 export default async function GuestDetailsPage({ params }: Props) {
   const user = await requirePermission("guests:view");
   const canDeleteGuest = can(user.role, "guests:delete");
+  const settings = await getGuesthouseSettings();
   const { id } = await params;
 
   const guest = await prisma.guest.findUnique({
@@ -49,6 +52,23 @@ export default async function GuestDetailsPage({ params }: Props) {
       maximumFractionDigits: 2,
     })}`;
 
+  const reservationViews = guest.reservations.map((reservation) => {
+    const amountPaid = reservation.payments
+      .filter((payment) => payment.status === "COMPLETED")
+      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+    const billing = calculateStayBilling({
+      checkIn: reservation.checkIn,
+      checkOut: reservation.checkOut,
+      totalAmount: Number(reservation.totalAmount),
+      status: reservation.status,
+      pricePerNight: Number(reservation.room.pricePerNight),
+      amountPaid,
+    });
+
+    return { reservation, amountPaid, billing };
+  });
+
   const statusStyles: Record<string, string> = {
     PENDING: "bg-amber-100 text-amber-800",
     CONFIRMED: "bg-blue-100 text-blue-800",
@@ -60,14 +80,11 @@ export default async function GuestDetailsPage({ params }: Props) {
 
   const totalBookings = guest.reservations.length;
 
-  const totalSpent = guest.reservations
-    .filter((reservation) =>
+  const totalSpent = reservationViews
+    .filter(({ reservation }) =>
       ["CHECKED_OUT", "CHECKED_IN"].includes(reservation.status)
     )
-    .reduce(
-      (sum, reservation) => sum + Number(reservation.totalAmount.toString()),
-      0
-    );
+    .reduce((sum, { billing }) => sum + billing.currentTotal, 0);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-10">
@@ -81,7 +98,7 @@ export default async function GuestDetailsPage({ params }: Props) {
 
         <div className="mb-8 mt-6">
           <p className="text-sm font-medium text-blue-600">
-            HAVENSTAY / GUEST DETAILS
+            {settings.guesthouseName.toUpperCase()} / GUEST DETAILS
           </p>
 
           <h1 className="mt-2 text-3xl font-bold text-gray-900">
@@ -218,12 +235,13 @@ export default async function GuestDetailsPage({ params }: Props) {
                     <th className="px-5 py-4 font-semibold">Check-out</th>
                     <th className="px-5 py-4 font-semibold">Guests</th>
                     <th className="px-5 py-4 font-semibold">Total</th>
+                    <th className="px-5 py-4 font-semibold">Balance</th>
                     <th className="px-5 py-4 font-semibold">Status</th>
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-gray-100">
-                  {guest.reservations.map((reservation) => (
+                  {reservationViews.map(({ reservation, billing }) => (
                     <tr key={reservation.id} className="hover:bg-gray-50">
                       <td className="px-5 py-4 font-medium text-gray-900">
                         {reservation.bookingCode}
@@ -238,7 +256,9 @@ export default async function GuestDetailsPage({ params }: Props) {
                       </td>
 
                       <td className="px-5 py-4 text-gray-600">
-                        {formatDate(reservation.checkOut)}
+                        {reservation.openEnded
+                          ? "Open"
+                          : formatDate(reservation.checkOut)}
                       </td>
 
                       <td className="px-5 py-4 text-gray-600">
@@ -246,7 +266,27 @@ export default async function GuestDetailsPage({ params }: Props) {
                       </td>
 
                       <td className="px-5 py-4 text-gray-600">
-                        {formatMoney(reservation.totalAmount)}
+                        {formatMoney({
+                          toString: () => String(billing.currentTotal),
+                        })}
+                        {billing.extraNights > 0 && (
+                          <span className="mt-1 block text-xs font-medium text-amber-700">
+                            +{billing.extraNights} extra night
+                            {billing.extraNights === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </td>
+
+                      <td
+                        className={`px-5 py-4 font-semibold ${
+                          billing.balance > 0
+                            ? "text-red-600"
+                            : "text-emerald-600"
+                        }`}
+                      >
+                        {formatMoney({
+                          toString: () => String(billing.balance),
+                        })}
                       </td>
 
                       <td className="px-5 py-4">
