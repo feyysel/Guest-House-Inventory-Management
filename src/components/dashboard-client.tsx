@@ -340,6 +340,57 @@ export default function DashboardClient({
             ))}
           </section>
 
+          <section className="panel room-list-panel">
+            <div className="panel-header">
+              <div>
+                <h2>Room overview</h2>
+                <p>Room records from your database</p>
+              </div>
+              <button
+                className="text-button"
+                onClick={() => navigate("/rooms")}
+              >
+                All rooms <ArrowUpRight size={16} />
+              </button>
+            </div>
+
+            <div className="room-grid">
+              {liveLoading ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div className="room-tile" key={`room-skeleton-${index}`}>
+                    <div className="room-tile-top">
+                      <ValueSkeleton size="sm" />
+                    </div>
+                    <ValueSkeleton size="md" />
+                    <ValueSkeleton size="sm" />
+                  </div>
+                ))
+              ) : (
+                (data?.rooms ?? []).slice(0, 8).map((room) => (
+                  <div className="room-tile" key={room.id}>
+                    <div className="room-tile-top">
+                      <BedDouble size={19} />
+                      <span>Room {room.roomNumber}</span>
+                    </div>
+                    <strong>
+                      {room.name || getStatusLabel(room.type)}
+                    </strong>
+                    <span
+                      className={`room-status ${getStatusClass(room.status)}`}
+                    >
+                      <i />
+                      {getStatusLabel(room.status)}
+                    </span>
+                  </div>
+                ))
+              )}
+
+              {!liveLoading && (data?.rooms.length ?? 0) === 0 && (
+                <p className="empty-state">No rooms have been added yet.</p>
+              )}
+            </div>
+          </section>
+
           <section className="activity-grid">
             <article className="panel activity-panel">
               <div className="panel-header">
@@ -585,57 +636,6 @@ export default function DashboardClient({
               >
                 Manage reservations <ArrowUpRight size={15} />
               </button>
-            </div>
-          </section>
-
-          <section className="panel room-list-panel">
-            <div className="panel-header">
-              <div>
-                <h2>Room overview</h2>
-                <p>Room records from your database</p>
-              </div>
-              <button
-                className="text-button"
-                onClick={() => navigate("/rooms")}
-              >
-                All rooms <ArrowUpRight size={16} />
-              </button>
-            </div>
-
-            <div className="room-grid">
-              {liveLoading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div className="room-tile" key={`room-skeleton-${index}`}>
-                    <div className="room-tile-top">
-                      <ValueSkeleton size="sm" />
-                    </div>
-                    <ValueSkeleton size="md" />
-                    <ValueSkeleton size="sm" />
-                  </div>
-                ))
-              ) : (
-                (data?.rooms ?? []).slice(0, 8).map((room) => (
-                  <div className="room-tile" key={room.id}>
-                    <div className="room-tile-top">
-                      <BedDouble size={19} />
-                      <span>Room {room.roomNumber}</span>
-                    </div>
-                    <strong>
-                      {room.name || getStatusLabel(room.type)}
-                    </strong>
-                    <span
-                      className={`room-status ${getStatusClass(room.status)}`}
-                    >
-                      <i />
-                      {getStatusLabel(room.status)}
-                    </span>
-                  </div>
-                ))
-              )}
-
-              {!liveLoading && (data?.rooms.length ?? 0) === 0 && (
-                <p className="empty-state">No rooms have been added yet.</p>
-              )}
             </div>
           </section>
 
