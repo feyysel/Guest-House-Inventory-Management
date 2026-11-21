@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createRoom,
@@ -63,6 +63,7 @@ export default function RoomsManager({
   const [filter, setFilter] = useState("ALL");
   const [form, setForm] = useState<RoomInput>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -79,11 +80,29 @@ export default function RoomsManager({
     });
   }, [rooms, search, filter]);
 
+  useEffect(() => {
+    if (isFormOpen) {
+      document.getElementById("room-form")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [isFormOpen, editingId]);
+
+  function closeForm() {
+    setIsFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setError("");
+    setMessage("");
+  }
+
   function startAdd() {
     setEditingId(null);
     setForm(emptyForm);
     setError("");
     setMessage("");
+    setIsFormOpen(true);
   }
 
   function startEdit(room: Room) {
@@ -99,10 +118,7 @@ export default function RoomsManager({
     });
     setError("");
     setMessage("");
-    document.getElementById("room-form")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    setIsFormOpen(true);
   }
 
   function changeField<K extends keyof RoomInput>(
@@ -130,6 +146,7 @@ export default function RoomsManager({
       setMessage(editingId ? "Room updated successfully." : "Room added successfully.");
       setEditingId(null);
       setForm(emptyForm);
+      setIsFormOpen(false);
       router.refresh();
     });
   }
@@ -192,7 +209,14 @@ export default function RoomsManager({
           ))}
         </section>
 
-        <section id="room-form" className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        {message && (
+          <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700">
+            {message}
+          </p>
+        )}
+
+        {isFormOpen && (
+          <section id="room-form" className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold">
             {editingId ? "Edit room" : "Add a room"}
           </h2>
@@ -293,12 +317,6 @@ export default function RoomsManager({
               </p>
             )}
 
-            {message && (
-              <p role="status" className="text-sm text-green-700 sm:col-span-2 lg:col-span-3">
-                {message}
-              </p>
-            )}
-
             <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
               <button
                 disabled={isPending}
@@ -307,18 +325,17 @@ export default function RoomsManager({
               >
                 {isPending ? "Saving..." : editingId ? "Save changes" : "Create room"}
               </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={startAdd}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium"
-                >
-                  Cancel edit
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={closeForm}
+                className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium"
+              >
+                Cancel
+              </button>
             </div>
           </form>
-        </section>
+          </section>
+        )}
 
         <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row">
