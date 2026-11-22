@@ -10,31 +10,46 @@ export const CACHE_KEYS = {
 
 let client: RedisClient | null = null;
 let connection: Promise<RedisClient | null> | null = null;
+let unavailable = false;
+let warningShown = false;
+
+function reportUnavailable(): void {
+  if (warningShown) return;
+  warningShown = true;
+  console.warn(
+    "Redis is unavailable; caching is disabled and data will be read directly from the database. " +
+      "Start it with `npm run redis:up` (Docker required) or point REDIS_URL at a reachable server."
+  );
+}
 
 async function getRedis(): Promise<RedisClient | null> {
   const url = process.env.REDIS_URL;
 
-  if (!url) return null;
+  if (!url || unavailable) return null;
   if (client?.isOpen) return client;
+  if (connection) return connection;
 
-  if (!connection) {
-    const instance = createClient({ url }) as RedisClient;
+  const instance = createClient({
+    url,
+    socket: { reconnectStrategy: false },
+  }) as RedisClient;
 
-    instance.on("error", (error) => {
-      console.error("Redis connection error:", error);
+  instance.on("error", () => reportUnavailable());
+
+  connection = instance
+    .connect()
+    .then(() => {
+      client = instance;
+      return instance;
+    })
+    .catch(() => {
+      unavailable = true;
+      reportUnavailable();
+      return null;
+    })
+    .finally(() => {
+      connection = null;
     });
-
-    connection = instance
-      .connect()
-      .then(() => {
-        client = instance;
-        return instance;
-      })
-      .catch(() => null)
-      .finally(() => {
-        connection = null;
-      });
-  }
 
   return connection;
 }
@@ -54,14 +69,19 @@ export async function cachedJson<T>(
     if (cached) {
       return JSON.parse(cached) as T;
     }
-
-    const value = await loader();
-    await redis.set(key, JSON.stringify(value), { EX: ttlSeconds });
-    return value;
   } catch (error) {
-    console.error("Redis cache read/write failed:", error);
-    return loader();
+    console.error("Redis cache read failed:", error);
   }
+
+  const value = await loader();
+
+  try {
+    await redis.set(key, JSON.stringify(value), { EX: ttlSeconds });
+  } catch (error) {
+    console.error("Redis cache write failed:", error);
+  }
+
+  return value;
 }
 
 export async function invalidateCache(...keys: string[]): Promise<void> {
