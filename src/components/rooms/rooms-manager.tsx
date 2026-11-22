@@ -33,7 +33,7 @@ const roomStatuses = [
 const emptyForm: RoomInput = {
   roomNumber: "",
   name: "",
-  type: "SINGLE",
+  type: "",
   status: "AVAILABLE",
   capacity: 1,
   pricePerNight: 0,
@@ -67,6 +67,13 @@ export default function RoomsManager({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const roomTypeOptions = useMemo(() => {
+    const values = [...roomTypes, ...rooms.map((room) => room.type)];
+    return Array.from(
+      new Set(values.map((value) => value.trim()).filter(Boolean)),
+    );
+  }, [rooms]);
 
   const filteredRooms = useMemo(() => {
     return rooms.filter((room) => {
@@ -247,15 +254,24 @@ export default function RoomsManager({
 
             <label className="space-y-1.5 text-sm font-medium">
               Room type *
-              <select
+              <input
+                required
+                list="room-type-options"
+                autoComplete="off"
+                maxLength={50}
                 className={inputClass}
                 value={form.type}
                 onChange={(e) => changeField("type", e.target.value)}
-              >
-                {roomTypes.map((type) => (
-                  <option key={type} value={type}>{labelStatus(type)}</option>
+                placeholder="Choose or type a room type"
+              />
+              <datalist id="room-type-options">
+                {roomTypeOptions.map((type) => (
+                  <option key={type} value={type} />
                 ))}
-              </select>
+              </datalist>
+              <span className="block text-xs font-normal text-gray-500">
+                Pick a suggestion or type your own.
+              </span>
             </label>
 
             <label className="space-y-1.5 text-sm font-medium">

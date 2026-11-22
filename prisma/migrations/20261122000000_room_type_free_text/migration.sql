@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Room" ALTER COLUMN "type" DROP DEFAULT;
+ALTER TABLE "Room" ALTER COLUMN "type" TYPE TEXT USING "type"::text;
+ALTER TABLE "Room" ALTER COLUMN "type" SET DEFAULT 'SINGLE';
+
+-- DropEnum
+DROP TYPE IF EXISTS "RoomType";

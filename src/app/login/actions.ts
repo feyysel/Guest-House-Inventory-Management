@@ -3,9 +3,13 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
-import { clearSessionCookie, setSessionCookie } from "@/lib/session";
+import {
+  clearSessionCookie,
+  setSessionCookie,
+  type SessionUser,
+} from "@/lib/session";
 
-export type LoginResult = { error?: string };
+export type LoginResult = { error?: string; user?: SessionUser };
 
 export async function signIn(
   email: string,
@@ -25,14 +29,16 @@ export async function signIn(
     return { error: "Invalid email or password, or the account is inactive." };
   }
 
-  await setSessionCookie({
+  const sessionUser: SessionUser = {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
-  });
+  };
 
-  redirect("/");
+  await setSessionCookie(sessionUser);
+
+  return { user: sessionUser };
 }
 
 export async function signOut(): Promise<void> {

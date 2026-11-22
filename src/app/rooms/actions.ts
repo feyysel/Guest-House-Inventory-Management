@@ -2,7 +2,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma, RoomStatus, RoomType } from "@/generated/prisma/client";
+import { Prisma, RoomStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { CACHE_KEYS, invalidateCache } from "@/lib/redis-cache";
 import { authorize } from "@/lib/session";
@@ -17,15 +17,20 @@ export type RoomInput = {
   status: string;
 };
 
+function normalizeRoomType(value: string) {
+  return value.trim().replace(/\s+/g, " ").toUpperCase();
+}
+
 function validateRoom(input: RoomInput) {
   const roomNumber = input.roomNumber.trim();
+  const roomType = normalizeRoomType(input.type);
 
   if (!roomNumber) return "Room number is required.";
 
-  if (
-    !Object.values(RoomType).includes(input.type as RoomType)
-  ) {
-    return "Choose a valid room type.";
+  if (!roomType) return "Room type is required.";
+
+  if (roomType.length > 50) {
+    return "Room type must be 50 characters or fewer.";
   }
 
   if (
@@ -61,7 +66,7 @@ export async function createRoom(input: RoomInput) {
       data: {
         roomNumber: input.roomNumber.trim(),
         name: input.name.trim() || null,
-        type: input.type as RoomType,
+        type: normalizeRoomType(input.type),
         status: input.status as RoomStatus,
         capacity: input.capacity,
         pricePerNight: new Prisma.Decimal(input.pricePerNight),
@@ -109,7 +114,7 @@ export async function updateRoom(id: string, input: RoomInput) {
       data: {
         roomNumber: input.roomNumber.trim(),
         name: input.name.trim() || null,
-        type: input.type as RoomType,
+        type: normalizeRoomType(input.type),
         status: input.status as RoomStatus,
         capacity: input.capacity,
         pricePerNight: new Prisma.Decimal(input.pricePerNight),

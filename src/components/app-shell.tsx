@@ -56,10 +56,13 @@ export default function AppShell({
     (state) => state.ui.pendingReservations
   );
 
+  const isAuthPage = pathname === "/login" || pathname === "/unauthorized";
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
   if (!user) {
-    if (pathname === "/login" || pathname === "/unauthorized") {
-      return <>{children}</>;
-    }
 
     return (
       <div className="app-shell">

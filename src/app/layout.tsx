@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import AppShell from "@/components/app-shell";
 import BootstrapProvider from "@/components/bootstrap-provider";
 import { getGuesthouseSettings } from "@/lib/settings";
+import { getSession } from "@/lib/session";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import StoreProvider from "@/store/provider";
 import "./globals.css";
@@ -30,7 +31,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const [user, settings] = await Promise.all([
+    getSession(),
+    getGuesthouseSettings(),
+  ]);
+
   return (
     <html
       lang="en"
@@ -43,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <StoreProvider>
+        <StoreProvider user={user} guesthouseName={settings.guesthouseName}>
           <BootstrapProvider>
             <AppShell>{children}</AppShell>
           </BootstrapProvider>

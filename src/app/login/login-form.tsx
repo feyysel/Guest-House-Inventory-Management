@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Building2, ShieldCheck } from "lucide-react";
 import type { UserRole } from "@/generated/prisma/client";
 import { roleLabels } from "@/lib/permissions";
 import ThemeToggle from "@/components/theme-toggle";
+import { setPendingReservations, setUser, useAppDispatch } from "@/store";
 import { signIn } from "./actions";
 
 const demoAccounts: {
@@ -48,6 +50,8 @@ export default function LoginForm({
 }: {
   guesthouseName: string;
 }) {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState<UserRole>("ADMIN");
@@ -63,7 +67,16 @@ export default function LoginForm({
 
       if (result.error) {
         setError(result.error);
+        return;
       }
+
+      if (result.user) {
+        dispatch(setUser(result.user));
+        dispatch(setPendingReservations(0));
+      }
+
+      router.push("/");
+      router.refresh();
     });
   }
 

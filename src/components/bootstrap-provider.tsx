@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import type { SessionUser } from "@/lib/session";
-import { setGuesthouseName, setUser, useAppDispatch } from "@/store";
+import {
+  setGuesthouseName,
+  setPendingReservations,
+  setUser,
+  useAppDispatch,
+} from "@/store";
 
 type BootstrapResponse = {
   user: SessionUser | null;
   guesthouseName: string;
+  pendingReservations: number;
 };
 
 export default function BootstrapProvider({
@@ -15,8 +22,12 @@ export default function BootstrapProvider({
   children: ReactNode;
 }) {
   const dispatch = useAppDispatch();
+  const pathname = usePathname();
+  const isAuthPage = pathname === "/login" || pathname === "/unauthorized";
 
   useEffect(() => {
+    if (isAuthPage) return;
+
     let cancelled = false;
 
     async function loadBootstrap() {
@@ -28,13 +39,16 @@ export default function BootstrapProvider({
         if (!response.ok) return;
 
         const result = (await response.json()) as BootstrapResponse;
-
         if (cancelled) return;
 
-        dispatch(setUser(result.user));
-
+        if (result.user) {
+          dispatch(setUser(result.user));
+        }
         if (result.guesthouseName) {
           dispatch(setGuesthouseName(result.guesthouseName));
+        }
+        if (typeof result.pendingReservations === "number") {
+          dispatch(setPendingReservations(result.pendingReservations));
         }
       } catch {
         return;
@@ -46,7 +60,7 @@ export default function BootstrapProvider({
     return () => {
       cancelled = true;
     };
-  }, [dispatch]);
+  }, [dispatch, isAuthPage, pathname]);
 
   return <>{children}</>;
 }

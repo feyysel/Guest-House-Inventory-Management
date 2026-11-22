@@ -40,7 +40,7 @@ export type RoomMinAggregateOutputType = {
   id: string | null
   roomNumber: string | null
   name: string | null
-  type: $Enums.RoomType | null
+  type: string | null
   status: $Enums.RoomStatus | null
   capacity: number | null
   pricePerNight: runtime.Decimal | null
@@ -53,7 +53,7 @@ export type RoomMaxAggregateOutputType = {
   id: string | null
   roomNumber: string | null
   name: string | null
-  type: $Enums.RoomType | null
+  type: string | null
   status: $Enums.RoomStatus | null
   capacity: number | null
   pricePerNight: runtime.Decimal | null
@@ -217,7 +217,7 @@ export type RoomGroupByOutputType = {
   id: string
   roomNumber: string
   name: string | null
-  type: $Enums.RoomType
+  type: string
   status: $Enums.RoomStatus
   capacity: number
   pricePerNight: runtime.Decimal
@@ -253,7 +253,7 @@ export type RoomWhereInput = {
   id?: Prisma.StringFilter<"Room"> | string
   roomNumber?: Prisma.StringFilter<"Room"> | string
   name?: Prisma.StringNullableFilter<"Room"> | string | null
-  type?: Prisma.EnumRoomTypeFilter<"Room"> | $Enums.RoomType
+  type?: Prisma.StringFilter<"Room"> | string
   status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
   capacity?: Prisma.IntFilter<"Room"> | number
   pricePerNight?: Prisma.DecimalFilter<"Room"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -284,7 +284,7 @@ export type RoomWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.RoomWhereInput[]
   NOT?: Prisma.RoomWhereInput | Prisma.RoomWhereInput[]
   name?: Prisma.StringNullableFilter<"Room"> | string | null
-  type?: Prisma.EnumRoomTypeFilter<"Room"> | $Enums.RoomType
+  type?: Prisma.StringFilter<"Room"> | string
   status?: Prisma.EnumRoomStatusFilter<"Room"> | $Enums.RoomStatus
   capacity?: Prisma.IntFilter<"Room"> | number
   pricePerNight?: Prisma.DecimalFilter<"Room"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -319,7 +319,7 @@ export type RoomScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Room"> | string
   roomNumber?: Prisma.StringWithAggregatesFilter<"Room"> | string
   name?: Prisma.StringNullableWithAggregatesFilter<"Room"> | string | null
-  type?: Prisma.EnumRoomTypeWithAggregatesFilter<"Room"> | $Enums.RoomType
+  type?: Prisma.StringWithAggregatesFilter<"Room"> | string
   status?: Prisma.EnumRoomStatusWithAggregatesFilter<"Room"> | $Enums.RoomStatus
   capacity?: Prisma.IntWithAggregatesFilter<"Room"> | number
   pricePerNight?: Prisma.DecimalWithAggregatesFilter<"Room"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -332,7 +332,7 @@ export type RoomCreateInput = {
   id?: string
   roomNumber: string
   name?: string | null
-  type?: $Enums.RoomType
+  type?: string
   status?: $Enums.RoomStatus
   capacity?: number
   pricePerNight: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -346,7 +346,7 @@ export type RoomUncheckedCreateInput = {
   id?: string
   roomNumber: string
   name?: string | null
-  type?: $Enums.RoomType
+  type?: string
   status?: $Enums.RoomStatus
   capacity?: number
   pricePerNight: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -360,7 +360,7 @@ export type RoomUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   roomNumber?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumRoomTypeFieldUpdateOperationsInput | $Enums.RoomType
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   capacity?: Prisma.IntFieldUpdateOperationsInput | number
   pricePerNight?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -374,7 +374,7 @@ export type RoomUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   roomNumber?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumRoomTypeFieldUpdateOperationsInput | $Enums.RoomType
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   capacity?: Prisma.IntFieldUpdateOperationsInput | number
   pricePerNight?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -388,7 +388,7 @@ export type RoomCreateManyInput = {
   id?: string
   roomNumber: string
   name?: string | null
-  type?: $Enums.RoomType
+  type?: string
   status?: $Enums.RoomStatus
   capacity?: number
   pricePerNight: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -401,7 +401,7 @@ export type RoomUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   roomNumber?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumRoomTypeFieldUpdateOperationsInput | $Enums.RoomType
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   capacity?: Prisma.IntFieldUpdateOperationsInput | number
   pricePerNight?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -414,7 +414,7 @@ export type RoomUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   roomNumber?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumRoomTypeFieldUpdateOperationsInput | $Enums.RoomType
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   capacity?: Prisma.IntFieldUpdateOperationsInput | number
   pricePerNight?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -481,10 +481,6 @@ export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
 }
 
-export type EnumRoomTypeFieldUpdateOperationsInput = {
-  set?: $Enums.RoomType
-}
-
 export type EnumRoomStatusFieldUpdateOperationsInput = {
   set?: $Enums.RoomStatus
 }
@@ -523,7 +519,7 @@ export type RoomCreateWithoutReservationsInput = {
   id?: string
   roomNumber: string
   name?: string | null
-  type?: $Enums.RoomType
+  type?: string
   status?: $Enums.RoomStatus
   capacity?: number
   pricePerNight: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -536,7 +532,7 @@ export type RoomUncheckedCreateWithoutReservationsInput = {
   id?: string
   roomNumber: string
   name?: string | null
-  type?: $Enums.RoomType
+  type?: string
   status?: $Enums.RoomStatus
   capacity?: number
   pricePerNight: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -565,7 +561,7 @@ export type RoomUpdateWithoutReservationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   roomNumber?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumRoomTypeFieldUpdateOperationsInput | $Enums.RoomType
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   capacity?: Prisma.IntFieldUpdateOperationsInput | number
   pricePerNight?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -578,7 +574,7 @@ export type RoomUncheckedUpdateWithoutReservationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   roomNumber?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  type?: Prisma.EnumRoomTypeFieldUpdateOperationsInput | $Enums.RoomType
+  type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumRoomStatusFieldUpdateOperationsInput | $Enums.RoomStatus
   capacity?: Prisma.IntFieldUpdateOperationsInput | number
   pricePerNight?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -689,7 +685,7 @@ export type $RoomPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     roomNumber: string
     name: string | null
-    type: $Enums.RoomType
+    type: string
     status: $Enums.RoomStatus
     capacity: number
     pricePerNight: runtime.Decimal
@@ -1123,7 +1119,7 @@ export interface RoomFieldRefs {
   readonly id: Prisma.FieldRef<"Room", 'String'>
   readonly roomNumber: Prisma.FieldRef<"Room", 'String'>
   readonly name: Prisma.FieldRef<"Room", 'String'>
-  readonly type: Prisma.FieldRef<"Room", 'RoomType'>
+  readonly type: Prisma.FieldRef<"Room", 'String'>
   readonly status: Prisma.FieldRef<"Room", 'RoomStatus'>
   readonly capacity: Prisma.FieldRef<"Room", 'Int'>
   readonly pricePerNight: Prisma.FieldRef<"Room", 'Decimal'>
