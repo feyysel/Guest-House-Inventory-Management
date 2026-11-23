@@ -195,6 +195,8 @@ export async function createReservation(
       (1000 * 60 * 60 * 24);
 
     const reservation = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.roomId}))`;
+
       const room = await tx.room.findUnique({
         where: { id: input.roomId },
       });

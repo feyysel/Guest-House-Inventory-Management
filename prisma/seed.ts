@@ -1,5 +1,5 @@
 
-import "dotenv/config";
+import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   PrismaClient,
@@ -9,9 +9,16 @@ import {
 } from "../src/generated/prisma/client.ts";
 import { hashPassword } from "../src/lib/password.ts";
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
+config({ path: ".env.local" });
+config({ path: ".env" });
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not configured. Set it in .env.local or .env");
+}
+
+const adapter = new PrismaPg({ connectionString });
 
 const prisma = new PrismaClient({ adapter });
 
@@ -73,21 +80,22 @@ async function main() {
 
   const users = [
     {
-      name: "Alice Admin",
-      email: "admin@havenstay.test",
-      password: "Admin@123",
+      name: process.env.SEED_ADMIN_NAME ?? "Alice Admin",
+      email: process.env.SEED_ADMIN_EMAIL ?? "admin@havenstay.test",
+      password: process.env.SEED_ADMIN_PASSWORD ?? "Admin@123",
       role: UserRole.ADMIN,
     },
     {
-      name: "Marta Manager",
-      email: "manager@havenstay.test",
-      password: "Manager@123",
+      name: process.env.SEED_MANAGER_NAME ?? "Marta Manager",
+      email: process.env.SEED_MANAGER_EMAIL ?? "manager@havenstay.test",
+      password: process.env.SEED_MANAGER_PASSWORD ?? "Manager@123",
       role: UserRole.MANAGER,
     },
     {
-      name: "Sam Receptionist",
-      email: "receptionist@havenstay.test",
-      password: "Staff@123",
+      name: process.env.SEED_RECEPTIONIST_NAME ?? "Sam Receptionist",
+      email:
+        process.env.SEED_RECEPTIONIST_EMAIL ?? "receptionist@havenstay.test",
+      password: process.env.SEED_RECEPTIONIST_PASSWORD ?? "Staff@123",
       role: UserRole.RECEPTIONIST,
     },
   ];

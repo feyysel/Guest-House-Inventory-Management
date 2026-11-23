@@ -2,8 +2,11 @@
 import Link from "next/link";
 import CreateGuestForm from "@/components/guests/create-guest-form";
 import { getGuesthouseSettings } from "@/lib/settings";
+import { requirePermission } from "@/lib/session";
 
 export default async function NewGuestPage() {
+  await requirePermission("guests:create");
+
   const settings = await getGuesthouseSettings();
 
   return (

@@ -27,7 +27,7 @@ export default function PaymentHistoryFilters({ payments }: Props) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(10);
     const [sortBy, setSortBy] = useState<"date" | "amount" | "guest">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     function handleSearchChange(value: string) {

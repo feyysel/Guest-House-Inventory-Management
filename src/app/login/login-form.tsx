@@ -9,31 +9,12 @@ import ThemeToggle from "@/components/theme-toggle";
 import { setPendingReservations, setUser, useAppDispatch } from "@/store";
 import { signIn } from "./actions";
 
-const demoAccounts: {
+export type DemoAccount = {
   role: UserRole;
   email: string;
   password: string;
   access: string;
-}[] = [
-  {
-    role: "ADMIN",
-    email: "admin@havenstay.test",
-    password: "Admin@123",
-    access: "Everything, including staff accounts",
-  },
-  {
-    role: "MANAGER",
-    email: "manager@havenstay.test",
-    password: "Manager@123",
-    access: "Operations, payments, reports, settings",
-  },
-  {
-    role: "RECEPTIONIST",
-    email: "receptionist@havenstay.test",
-    password: "Staff@123",
-    access: "Rooms, reservations, guests, payments",
-  },
-];
+};
 
 function inferRoleFromEmail(value: string): UserRole {
   const prefix = value.split("@")[0]?.toLowerCase() ?? "";
@@ -47,8 +28,10 @@ function inferRoleFromEmail(value: string): UserRole {
 
 export default function LoginForm({
   guesthouseName,
+  demoAccounts = [],
 }: {
   guesthouseName: string;
+  demoAccounts?: DemoAccount[];
 }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -114,7 +97,9 @@ export default function LoginForm({
               </div>
               <p className="mt-2 text-xs leading-5 text-teal-100">
                 Each account sees only the menu and actions allowed for its
-                role. Pick a demo account below to try each access level.
+                role.
+                {demoAccounts.length > 0 &&
+                  " Pick a demo account below to try each access level."}
               </p>
             </div>
           </div>
@@ -173,38 +158,40 @@ export default function LoginForm({
               </button>
             </form>
 
-            <div className="mt-8 border-t border-slate-100 pt-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Demo accounts
-              </p>
-              <div className="mt-3 space-y-2">
-                {demoAccounts.map((account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() => {
-                      setEmail(account.email);
-                      setPassword(account.password);
-                      setSelectedRole(account.role);
-                      setError("");
-                    }}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-teal-300 hover:bg-teal-50"
-                  >
-                    <span>
-                      <span className="block text-sm font-semibold text-slate-800">
-                        {roleLabels[account.role]}
+            {demoAccounts.length > 0 && (
+              <div className="mt-8 border-t border-slate-100 pt-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Demo accounts
+                </p>
+                <div className="mt-3 space-y-2">
+                  {demoAccounts.map((account) => (
+                    <button
+                      key={account.email}
+                      type="button"
+                      onClick={() => {
+                        setEmail(account.email);
+                        setPassword(account.password);
+                        setSelectedRole(account.role);
+                        setError("");
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-teal-300 hover:bg-teal-50"
+                    >
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-800">
+                          {roleLabels[account.role]}
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          {account.access}
+                        </span>
                       </span>
-                      <span className="block text-xs text-slate-500">
-                        {account.access}
+                      <span className="shrink-0 font-mono text-[11px] text-slate-500">
+                        {account.password}
                       </span>
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] text-slate-500">
-                      {account.password}
-                    </span>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

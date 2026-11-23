@@ -2,10 +2,13 @@
 import { prisma } from "@/lib/db";
 import { calculateStayBilling } from "@/lib/reservation-billing";
 import ReservationsManager from "@/components/reservations/reservations-manager";
+import { requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReservationsPage() {
+  await requirePermission("reservations:view");
+
   const [databaseReservations, databaseRooms, databaseActiveBookings] =
     await Promise.all([
       prisma.reservation.findMany({

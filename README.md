@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HavenStay Guest House Management
 
-## Getting Started
+Next.js 16 + Prisma 7 + PostgreSQL app for managing rooms, reservations, guests, payments, reports, staff accounts, and guest-house settings.
 
-First, run the development server:
+## Requirements
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 22+ (the seed script uses native TypeScript stripping)
+- PostgreSQL 14+ (a pooled connection string is fine)
+- Docker (optional, only for the local Redis cache)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   npm install
+   ```
 
-## Learn More
+2. Create `.env.local` (or `.env`) from `.env.example` and set at least:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   DATABASE_URL="postgresql://user:password@host:5432/guesthouse?schema=public"
+   SESSION_SECRET="a-random-string-of-at-least-32-characters"
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   Generate a secret with:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
 
-## Deploy on Vercel
+   Never commit real credentials. `.env*` is gitignored; only `.env.example` is tracked.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Apply migrations and seed the initial rooms and staff accounts:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npx prisma migrate deploy
+   npm run seed
+   ```
+
+   The seed reads `.env.local` and `.env`. Override the default demo emails/passwords with the `SEED_*` variables in `.env.example` before seeding. The seeded passwords are applied on first creation only; change them from the Users page afterwards.
+
+4. Start the app:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000 and sign in with the seeded admin account. Demo account shortcuts appear only in development.
+
+## Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | TypeScript check |
+| `npm test` | Unit tests for billing, permissions, and password hashing |
+| `npm run seed` | Seed rooms and staff accounts |
+| `npx prisma migrate deploy` | Apply committed migrations (production) |
+| `npx prisma migrate dev` | Create a migration during development |
+| `npm run redis:up` / `npm run redis:down` | Optional local Redis cache via Docker |
+
+## Redis cache (optional)
+
+Redis is only a cache. Leave `REDIS_URL` unset to run without it; every read then goes straight to PostgreSQL. To start the bundled Redis container, run `npm run redis:up` and set `REDIS_URL=redis://127.0.0.1:6379`.
+
+The Docker configuration binds Redis to localhost only. Do not publish it to a public interface in production.
+
+## Deployment / multiple clients
+
+This build is single-tenant: one guest house, one database, one settings record. For separate clients, deploy one instance per client with its own PostgreSQL database and its own `DATABASE_URL` and `SESSION_SECRET`. Databases are independent; run `npx prisma migrate deploy` and `npm run seed` once for each new client database. There are no cross-database links or foreign keys.
+
+Before going live:
+
+- Set a unique `SESSION_SECRET` of at least 32 characters for every deployment. Production refuses to start without it.
+- Replace the seeded demo passwords and remove/disable unused staff accounts.
+- Apply migrations with `prisma migrate deploy` rather than `migrate dev`.
+- Use HTTPS so the secure session cookie is sent.
+- Back up the database; the Docker Redis volume is cache-only and contains no authoritative data.
+
+## Roles
+
+- **Administrator** – full access, including staff accounts and deletions.
+- **Manager** – daily operations, payments, reports, and settings.
+- **Receptionist** – rooms, reservations, guests, and payments.

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --import tsx --test tests/*.test.ts",
     "redis:up": "docker compose up -d redis",
     "redis:down": "docker compose down",
     "seed": "node --experimental-strip-types prisma/seed.ts",

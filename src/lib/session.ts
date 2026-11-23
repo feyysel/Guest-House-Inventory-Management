@@ -9,8 +9,18 @@ import { can, type Permission } from "@/lib/permissions";
 export const SESSION_COOKIE = "havenstay_session";
 export const SESSION_MAX_AGE = 60 * 60 * 8;
 
-const sessionSecret =
-  process.env.SESSION_SECRET ?? "havenstay-development-secret-change-me";
+const sessionSecret = process.env.SESSION_SECRET;
+
+if (!sessionSecret && process.env.NODE_ENV === "production") {
+  throw new Error("SESSION_SECRET must be set in production");
+}
+
+if (sessionSecret && sessionSecret.length < 32) {
+  throw new Error("SESSION_SECRET must be at least 32 characters long");
+}
+
+const activeSessionSecret =
+  sessionSecret ?? "havenstay-development-secret-change-me";
 
 export type SessionUser = {
   id: string;
@@ -22,7 +32,9 @@ export type SessionUser = {
 type SessionPayload = SessionUser & { expiresAt: number };
 
 function sign(value: string): string {
-  return createHmac("sha256", sessionSecret).update(value).digest("base64url");
+  return createHmac("sha256", activeSessionSecret)
+    .update(value)
+    .digest("base64url");
 }
 
 function createToken(user: SessionUser): string {

@@ -3,10 +3,13 @@ import { prisma } from "@/lib/db";
 import GuestsTable from "@/components/guests/guests-table";
 import Link from "next/link";
 import { getGuesthouseSettings } from "@/lib/settings";
+import { requirePermission } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function GuestsPage() {
+  await requirePermission("guests:view");
+
   const guests = await prisma.guest.findMany({
     orderBy: {
       createdAt: "desc",

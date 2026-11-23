@@ -4,12 +4,15 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import EditGuestForm from "@/components/guests/edit-guest-form";
 import { getGuesthouseSettings } from "@/lib/settings";
+import { requirePermission } from "@/lib/session";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
 export default async function EditGuestPage({ params }: Props) {
+  await requirePermission("guests:view");
+
   const { id } = await params;
 
   const [guest, settings] = await Promise.all([

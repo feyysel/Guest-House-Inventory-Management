@@ -2,7 +2,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import PaymentHistoryFilters from "./PaymentHistoryFilters";
+import { requirePermission } from "@/lib/session";
+
 export default async function PaymentsPage() {
+  await requirePermission("payments:view");
+
   const payments = await prisma.payment.findMany({
     include: {
       reservation: {
